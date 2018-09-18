@@ -54,9 +54,9 @@ library(fiftystater)
 #run models with disability rates
   #SSDI and ASEC disab rate
 
-#rund models with missing series set to 0, also set to NA
+#run models with missing series set to 0, also set to NA
 
-#can predict state-year disability based offf of regression
+#can predict state-year disability based off of regression
 
 #change age grouping in penultimate to 18-54
 
@@ -692,7 +692,67 @@ ggplot(bt, aes(x=start.year, y=est)) +
 
 ```
 
-# Felon Density Map
+
+
+#Estimates with Diability Measures (SSDI & ASEC Disability Rate)
+```{r, warning=F}
+
+
+y1.fe.d <- plm(p6.y1.notemployed.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                   ssi.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+
+                  t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+t.unemp.rate,
+                  data = fe.ov, weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
+y1.fe.robust.d <- coeftest(y1.fe.d, vcov=vcovHC(y1.fe.d,type="HC0",cluster=c("group","time")))
+
+y2.fe.d <- plm(p6.y1.notemployed.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                   ssi.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+
+                  t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+ssdi.rate,
+                  data = fe.ov, weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
+y2.fe.robust.d <- coeftest(y2.fe.d, vcov=vcovHC(y2.fe.d,type="HC0",cluster=c("group","time")))
+
+y3.fe.d <- plm(p6.y1.notemployed.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                   ssi.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+
+                  t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+p6.disab.rate,
+                  data = fe.ov, weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
+y3.fe.robust.d <- coeftest(y3.fe.d, vcov=vcovHC(y3.fe.d,type="HC0",cluster=c("group","time")))
+
+y4.fe.d <- plm(p6.y1.notemployed.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                   ssi.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+
+                  t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+ssdi.rate+p6.disab.rate,
+                  data = fe.ov, weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
+y4.fe.robust.d <- coeftest(y4.fe.d, vcov=vcovHC(y4.fe.d,type="HC0",cluster=c("group","time")))
+
+
+
+d.fe.robust.se <- list(y1.fe.robust.d[,2], y2.fe.robust.d[,2], y3.fe.robust.d[,2], y4.fe.robust.d[,2])
+d.fe.robust.p <- list(y1.fe.robust.d[,4], y2.fe.robust.d[,4], y3.fe.robust.d[,4], y4.fe.robust.d[,4])
+
+```
+
+```{r, results='asis', echo=F}
+stargazer(y1.fe.d, y2.fe.d, y3.fe.d, y4.fe.d,
+          type="latex", style="aer", title="Models Including SSDI and ASEC Disability Rate", covariate.labels= c(
+                                                  "Ex-Felon Percentage", 
+                                                  "Population Share 26-35",
+                                                  "Pop. Share 36-45","Pop. Share 46-55",
+                                                  "Pop. Share 56-65","Pop. Share 66+", 
+                                                  "SSI Rate","Marriage Rate",
+                                                  "Effective Wage", "Mean TANF Maximum",  "Unemployment Comp.",
+                                                  "Ovr. Unemp. Rate t-1",
+                                                  "Ovr. Unemp. Rate t-2","Ovr. Unemp. Rate t-3",
+                                                  "Ovr. Unemp. Rate t", "SSDI","ASEC Disab."),
+          header=F, p.auto=F,
+          notes=c("Clustered Standard Errors by State and Year.", "Weighted by State-Year total pop."), 
+          se = d.fe.robust.se, p=d.fe.robust.p, 
+          star.cutoffs = c(.05, .01, .001), star.char = c("*","**","***"),
+          single.row = T, omit.stat="f", font.size="small",
+          add.lines = list(c("State FE", "Yes", "Yes","Yes","Yes"), 
+                           c("Year FE", "Yes", "Yes","Yes","Yes")))
+```
+
+
+
+# Felon Density Maps
 
 ```{r}
 #Read in the geojson of state boundaries

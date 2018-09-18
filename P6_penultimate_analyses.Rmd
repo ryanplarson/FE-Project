@@ -40,6 +40,7 @@ library(fiftystater)
 
 #state-specific time trends?
 
+
 #heterogeneity in effect of time - interact ex-felon share with year (continuous)
 #main effect set at 2010 year, 2010 is 0, 2009 is -1, 2008 is -2, etc. 
 #graph marginal effect over time

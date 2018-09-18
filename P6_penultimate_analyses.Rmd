@@ -38,6 +38,7 @@ library(fiftystater)
 
 #write up research questions/motivation, methods, results - next steps 
 
+
 #state-specific time trends?
 
 

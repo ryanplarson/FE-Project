@@ -30,6 +30,12 @@ library(RColorBrewer)
 library(gganimate)
 library(fiftystater)
 
+#check cases
+#impute in black subsample model & include missing dummy
+#rolling window plots for male and female models
+#maybe center rolling windows plot around focal year
+#reorder unemployment lags
+#call ex-fel percentage to felony history pct.
 
 #loading in data/setting working directory
 #setwd("C:/Users/DELL/Documents/FE 2017") #set to google drive local folder
@@ -58,7 +64,7 @@ ggplot(ne, aes(y=(100-ne.rate), x=YEAR)) +
   theme_bw()+
   xlab("Year")+
   ylab("Employment Population Ratio")+
-  ggtitle("US Prime-Age (25-54) Employment Population Ratio")
+  ggtitle("US 18-54 Employment Population Ratio")
 
 
 
@@ -172,17 +178,17 @@ ggplot(fe.fd[fe.fd$YEAR %in% c(1996,1998,2000,2002,2004,2006,2008,2010),], aes(x
 
 ```{r, include=FALSE}
 
-y1.fe <- plm(p6.y1.notemployed.rate~pctexfel, data = fe.ov, weights = norm.weight, 
+y1.fe <- plm(p6.y1.notemployed.rate~pctexfel, data = fe.ov[fe.ov$YEAR >= 1988,], weights = norm.weight, 
              index = c("STATENAME","YEAR"), effect="twoway", model="within")
 y1.fe.robust <- coeftest(y1.fe, vcov=vcovHC(y1.fe,type="HC0",cluster=c("group","time")))
 
 y1.fe.2 <- plm(p6.y1.notemployed.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus, 
-               data = fe.ov, weights = 1/norm.weight,index = c("STATENAME","YEAR"), effect="twoway", model="within")
+               data = fe.ov[fe.ov$YEAR >= 1988,], weights = 1/norm.weight,index = c("STATENAME","YEAR"), effect="twoway", model="within")
 y1.fe.2.robust <- coeftest(y1.fe.2, vcov=vcovHC(y1.fe.2,type="HC0",cluster=c("group","time")))
 
 
 y1.fe.3 <- plm(p6.y1.notemployed.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
-                 p6.disab.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio, data = fe.ov, 
+                 p6.disab.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio, data = fe.ov[fe.ov$YEAR >= 1988,], 
                weights = 1/norm.weight,
                index = c("STATENAME","YEAR"), effect="twoway", model="within")
 y1.fe.3.robust <- coeftest(y1.fe.3, vcov=vcovHC(y1.fe.3,type="HC0",cluster=c("group","time")))
@@ -191,14 +197,14 @@ y1.fe.3.robust <- coeftest(y1.fe.3, vcov=vcovHC(y1.fe.3,type="HC0",cluster=c("gr
 y1.fe.4 <- plm(p6.y1.notemployed.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
                   p6.disab.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+
                   t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate,
-                  data = fe.ov, weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
+                  data = fe.ov[fe.ov$YEAR >= 1988,], weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
 y1.fe.4.robust <- coeftest(y1.fe.4, vcov=vcovHC(y1.fe.4,type="HC0",cluster=c("group","time")))
 
 
 y1.fe.5 <- plm(p6.y1.notemployed.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
                    p6.disab.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+
                   t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+t.unemp.rate,
-                  data = fe.ov, weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
+                  data = fe.ov[fe.ov$YEAR >= 1988,], weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
 y1.fe.5.robust <- coeftest(y1.fe.5, vcov=vcovHC(y1.fe.5,type="HC0",cluster=c("group","time")))
 
 y1.fe.robust.se <- list(y1.fe.robust[,2], y1.fe.2.robust[,2], y1.fe.3.robust[,2], y1.fe.4.robust[,2], y1.fe.5.robust[,2])
@@ -234,17 +240,17 @@ stargazer(y1.fe, y1.fe.2, y1.fe.3, y1.fe.4, y1.fe.5,
 
 ```{r, include=FALSE}
 
-y2.fe <- plm(p6.y2.unemployed.rate~pctexfel, data = fe.ov, weights = norm.weight,
+y2.fe <- plm(p6.y2.unemployed.rate~pctexfel, data = fe.ov[fe.ov$YEAR >= 1988,], weights = norm.weight,
              index = c("STATENAME","YEAR"), effect="twoway", model="within")
 y2.fe.robust <- coeftest(y2.fe, vcov=vcovHC(y2.fe,type="HC0",cluster=c("group","time")))
 
 y2.fe.2 <- plm(p6.y2.unemployed.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus, 
-               data = fe.ov, weights = norm.weight, index = c("STATENAME","YEAR"), effect="twoway", model="within")
+               data = fe.ov[fe.ov$YEAR >= 1988,], weights = norm.weight, index = c("STATENAME","YEAR"), effect="twoway", model="within")
 y2.fe.2.robust <- coeftest(y2.fe.2, vcov=vcovHC(y2.fe.2,type="HC0",cluster=c("group","time")))
 
 
 y2.fe.3 <- plm(p6.y2.unemployed.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
-                 p6.disab.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio, data = fe.ov, 
+                 p6.disab.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio, data = fe.ov[fe.ov$YEAR >= 1988,], 
                weights = norm.weight,
                index = c("STATENAME","YEAR"), effect="twoway", model="within")
 y2.fe.3.robust <- coeftest(y2.fe.3, vcov=vcovHC(y2.fe.3,type="HC0",cluster=c("group","time")))
@@ -253,7 +259,7 @@ y2.fe.3.robust <- coeftest(y2.fe.3, vcov=vcovHC(y2.fe.3,type="HC0",cluster=c("gr
 y2.fe.4 <- plm(p6.y2.unemployed.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
                   p6.disab.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+
                   t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate,
-                  data = fe.ov, weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
+                  data = fe.ov[fe.ov$YEAR >= 1988,], weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
 y2.fe.4.robust <- coeftest(y2.fe.4, vcov=vcovHC(y2.fe.4,type="HC0",cluster=c("group","time")))
 
 
@@ -291,17 +297,17 @@ stargazer(y2.fe, y2.fe.2, y2.fe.3, y2.fe.4,
 
 ```{r, include=FALSE}
 
-y3.fe <- plm(p6.y3.idle.rate~pctexfel, data = fe.ov, weights = norm.weight,
+y3.fe <- plm(p6.y3.idle.rate~pctexfel, data = fe.ov[fe.ov$YEAR >= 1988,], weights = norm.weight,
              index = c("STATENAME","YEAR"), effect="twoway", model="within")
 y3.fe.robust <- coeftest(y3.fe, vcov=vcovHC(y3.fe,type="HC0",cluster=c("group","time")))
 
 y3.fe.2 <- plm(p6.y3.idle.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus, 
-               data = fe.ov, weights = norm.weight, index = c("STATENAME","YEAR"), effect="twoway", model="within")
+               data = fe.ov[fe.ov$YEAR >= 1988,], weights = norm.weight, index = c("STATENAME","YEAR"), effect="twoway", model="within")
 y3.fe.2.robust <- coeftest(y3.fe.2, vcov=vcovHC(y3.fe.2,type="HC0",cluster=c("group","time")))
 
 
 y3.fe.3 <- plm(p6.y3.idle.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
-                 p6.disab.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio, data = fe.ov,
+                 p6.disab.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio, data = fe.ov[fe.ov$YEAR >= 1988,],
                weights = norm.weight,
                index = c("STATENAME","YEAR"), effect="twoway", model="within")
 y3.fe.3.robust <- coeftest(y3.fe.3, vcov=vcovHC(y3.fe.3,type="HC0",cluster=c("group","time")))
@@ -310,13 +316,13 @@ y3.fe.3.robust <- coeftest(y3.fe.3, vcov=vcovHC(y3.fe.3,type="HC0",cluster=c("gr
 y3.fe.4 <- plm(p6.y3.idle.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
                   p6.disab.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+
                   t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate,
-                  data = fe.ov, weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
+                  data = fe.ov[fe.ov$YEAR >= 1988,], weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
 y3.fe.4.robust <- coeftest(y3.fe.4, vcov=vcovHC(y3.fe.4,type="HC0",cluster=c("group","time")))
 
 y3.fe.5 <- plm(p6.y3.idle.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
                    p6.disab.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+
                   t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+t.unemp.rate,
-                  data = fe.ov, weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
+                  data = fe.ov[fe.ov$YEAR >= 1988,], weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
 y3.fe.5.robust <- coeftest(y3.fe.5, vcov=vcovHC(y3.fe.5,type="HC0",cluster=c("group","time")))
 
 
@@ -354,17 +360,17 @@ stargazer(y3.fe, y3.fe.2, y3.fe.3, y3.fe.4,y3.fe.5,
 
 ```{r, include=FALSE, include=F}
 
-y4.fe <- plm(p6.y4.cfw.rate~1+pctexfel, data = fe.ov, weights = norm.weight,
+y4.fe <- plm(p6.y4.cfw.rate~1+pctexfel, data = fe.ov[fe.ov$YEAR >= 1988,], weights = norm.weight,
              index = c("STATENAME","YEAR"), effect="twoway", model="within")
 y4.fe.robust <- coeftest(y4.fe, vcov=vcovHC(y4.fe,type="HC0",cluster=c("group","time")))
 
 y4.fe.2 <- plm(p6.y4.cfw.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus, 
-               data = fe.ov, weights = norm.weight, index = c("STATENAME","YEAR"), effect="twoway", model="within")
+               data = fe.ov[fe.ov$YEAR >= 1988,], weights = norm.weight, index = c("STATENAME","YEAR"), effect="twoway", model="within")
 y4.fe.2.robust <- coeftest(y4.fe.2, vcov=vcovHC(y4.fe.2,type="HC0",cluster=c("group","time")))
 
 
 y4.fe.3 <- plm(p6.y4.cfw.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
-                 p6.disab.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio, data = fe.ov, 
+                 p6.disab.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio, data = fe.ov[fe.ov$YEAR >= 1988,], 
                weights = norm.weight,
                index = c("STATENAME","YEAR"), effect="twoway", model="within")
 y4.fe.3.robust <- coeftest(y4.fe.3, vcov=vcovHC(y4.fe.3,type="HC0",cluster=c("group","time")))
@@ -373,14 +379,14 @@ y4.fe.3.robust <- coeftest(y4.fe.3, vcov=vcovHC(y4.fe.3,type="HC0",cluster=c("gr
 y4.fe.4 <- plm(p6.y4.cfw.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
                   p6.disab.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+
                   t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate,
-                  data = fe.ov, weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
+                  data = fe.ov[fe.ov$YEAR >= 1988,], weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
 y4.fe.4.robust <- coeftest(y4.fe.4, vcov=vcovHC(y4.fe.4,type="HC0",cluster=c("group","time")))
 
 
 y4.fe.5 <- plm(p6.y4.cfw.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
                    p6.disab.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+
                   t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+t.unemp.rate,
-                  data = fe.ov, weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
+                  data = fe.ov[fe.ov$YEAR >= 1988,], weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
 y4.fe.5.robust <- coeftest(y4.fe.5, vcov=vcovHC(y4.fe.5,type="HC0",cluster=c("group","time")))
 
 y4.fe.robust.se <- list(y4.fe.robust[,2], y4.fe.2.robust[,2], y4.fe.3.robust[,2], y4.fe.4.robust[,2], y4.fe.5.robust[,2])

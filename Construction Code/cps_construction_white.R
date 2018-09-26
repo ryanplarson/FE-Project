@@ -111,6 +111,9 @@ cps$pop.share[cps$AGE >= 56 & cps$AGE <=65] <- "p.56_65"
 cps$pop.share[cps$AGE >= 66 ] <- "p.66_plus"
 cps$pop.share <- as.factor(cps$pop.share)
 
+#CPS Basic Monthly Adjustment
+cps <- cps %>% mutate(WTFINL = (WTFINL/12))
+
 #renaming for code fit purposes
 cps.w <- cps
 rm(cps)

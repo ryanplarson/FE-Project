@@ -8,9 +8,7 @@ library(tidyr)
 library(stringr)
 library(csp)
 
-#setwd("C:/Users/DELL/Documents/FE 2017") #set to google drive local folder
-
-#read in cps_basic data
+#read in cps_asec data
 cps <- as.data.frame(read.csv.ffdf(file="cps_basic.csv", header=T, VERBOSE = T, first.rows=10000, next.rows=50000,
                      sep=",", colClasses = NA)) 
 class(cps)
@@ -111,6 +109,10 @@ cps$pop.share[cps$AGE >= 56 & cps$AGE <=65] <- "p.56_65"
 cps$pop.share[cps$AGE >= 66 ] <- "p.66_plus"
 cps$pop.share <- as.factor(cps$pop.share)
 #table(cps$pop.share, cps$AGE)
+
+
+#CPS Basic Monthly Adjustment
+cps <- cps %>% mutate(WTFINL = (WTFINL/12))
 
 #############################################
 #cps.emp - BASE DATASET
@@ -1007,7 +1009,7 @@ cps.emp <- left_join(cps.emp, ssdi, by=c("YEAR","STATENAME"))
 ssi <- read.csv(file="SSI.csv")
 ssi <- ssi %>% rename(YEAR = Year, STATENAME = State, ssi.rec = SSI_recip)
 
-cps.emp <- left_join(cps.emp, ssi, by=c("YEAR","STATENAME")) %>% mutate(ssi.rate = 100*((100*ssi.rec)/population.16)) #check here (Sarah)
+cps.emp <- left_join(cps.emp, ssi, by=c("YEAR","STATENAME")) %>% mutate(ssi.rate = 100*((ssi.rec)/population.16)) #check here (Sarah)
 
 #################################
 ### UKCPR Variables

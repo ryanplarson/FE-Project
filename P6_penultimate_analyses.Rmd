@@ -4,6 +4,7 @@ author: "Ryan Larson"
 date: "`r format(Sys.time(), '%m/%d/%Y')`"
 header-includes:
 - \usepackage{pdflscape}
+#- \usepackage{animate}
 - \newcommand{\blandscape}{\begin{landscape}}
 - \newcommand{\elandscape}{\end{landscape}}
 output: pdf_document
@@ -29,9 +30,8 @@ library(mapdata)
 library(RColorBrewer)
 library(gganimate)
 library(fiftystater)
+library(imputeTS)
 
-#impute in black subsample model & include missing dummy
-#rolling window plots for male and female models
 
 #loading in data/setting working directory
 #setwd("C:/Users/DELL/Documents/FE 2017") #set to google drive local folder
@@ -431,7 +431,7 @@ stargazer(y3.fe.4, y2.fe.4, y4.fe.4,
 
 ```{r, echo=F, include=F}
 #not employed - psix men
-fe.p6 <- fe %>% select(YEAR, STATENAME, STATEFIP, p6.pop,popshare.16.25, popshare.26.35, popshare.36.45,
+fe.p6.m <- fe %>% select(YEAR, STATENAME, STATEFIP, p6.pop,popshare.16.25, popshare.26.35, popshare.36.45,
                        popshare.46.55, popshare.56.65, popshare.66.plus, t.unemp.rate,
                        t_1.unemp.rate, t_2.unemp.rate, t_3.unemp.rate, p6.y1.notemployed.rate.m,
                        p6.y2.unemployed.rate.m, p6.y3.idle.rate.m, p6.y4.cfw.rate.m,p6.disab.rate.m, ssi.rate,
@@ -444,7 +444,7 @@ fe.p6 <- fe %>% select(YEAR, STATENAME, STATEFIP, p6.pop,popshare.16.25, popshar
 p6.y1.male <- plm(p6.y1.notemployed.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
                    p6.disab.rate+marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+
                   t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate,
-                  data = fe.p6, weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
+                  data = fe.p6.m, weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
 p6.y1.male.robust <- coeftest(p6.y1.male, vcov=vcovHC(p6.y1.male,type="HC0",cluster=c("group","time")))
 
 
@@ -457,9 +457,10 @@ fe.p6.female <- fe %>% select(YEAR, STATENAME, STATEFIP, p6.pop.female, popshare
                        p6.marriage.rate.female, p6.disab.rate.female, pctexfel, ssdi.rate, effective.wage, 
                        TANF.mu, z_labor_unemployment_compensatio,time.indicator) %>%
                       mutate(ssi.rate=ssi.rate, norm.weight = p6.pop.female*(1550/sum(p6.pop.female))) %>% 
-                      rename(marriage.rate= p6.marriage.rate.female, p6.disab.rate = p6.disab.rate.female)
+                      rename(marriage.rate= p6.marriage.rate.female, p6.disab.rate = p6.disab.rate.female,
+                             p6.y1.notemployed.rate = p6.y1.notemployed.rate.female)
 
-p6.y1.female <- plm(p6.y1.notemployed.rate.female~pctexfel+
+p6.y1.female <- plm(p6.y1.notemployed.rate~pctexfel+
                   popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
                   p6.disab.rate+marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+
                   t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate,
@@ -476,14 +477,21 @@ fe.p6.black <- fe %>% select(YEAR, STATENAME, STATEFIP, p6.pop.b, popshare.16.25
                       mutate(ssi.rate=ssi.rate, norm.weight = p6.pop.b*(1550/sum(p6.pop.b, na.rm=T))) %>% rename(marriage.rate=p6.marriage.rate.b, p6.disab.rate = p6.disab.rate.b)
 
 #checking missings - ASEC NA's
-colSums(is.na(fe.p6.black))
-fe.p6.black[is.na(fe.p6.black$p6.y1.notemployed.rate.b),c("YEAR","STATENAME")]
-fe.p6.black[is.na(fe.p6.black$marriage.rate),c("YEAR","STATENAME")]
+colSums(is.na(fe.p6.black[fe.p6.black$YEAR >= 1988,]))
+fe.p6.black[is.na(fe.p6.black$p6.y1.notemployed.rate.b) & fe.p6.black$YEAR >= 1988,c("YEAR","STATENAME")]
+fe.p6.black[is.na(fe.p6.black$marriage.rate) & fe.p6.black$YEAR >= 1988,c("YEAR","STATENAME")]
 dim(fe.p6.black[is.na(fe.p6.black$p6.disab.rate) & fe.p6.black$YEAR >= 1988,c("YEAR","STATENAME")])
+
+#imputation - just disability for now
+fe.p6.black <- fe.p6.black %>% mutate(dis.imputed = ifelse(YEAR >= 1988, ifelse(is.na(p6.disab.rate), "Imputed","Not Imputed"), NA), 
+                                      p6.disab.rate = ifelse(YEAR >= 1988, na.interpolation(p6.disab.rate, option = "linear"), NA),
+                                      mar.imputed = ifelse(YEAR >= 1988, ifelse(is.na(marriage.rate), "Imputed","Not Imputed"), NA), 
+                                      marriage.rate = ifelse(YEAR >= 1988, na.interpolation(marriage.rate, option = "linear"), NA)) 
+  
 
 p6.y1.black <- plm(p6.y1.notemployed.rate.b~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
                    p6.disab.rate+marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+
-                  t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate,
+                  t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+as.factor(dis.imputed)+as.factor(mar.imputed),
                   data = fe.p6.black, weight = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
 p6.y1.black.robust <- coeftest(p6.y1.black, vcov=vcovHC(p6.y1.black,type="HC0",cluster=c("group","time")))
 
@@ -536,8 +544,11 @@ stargazer(p6.y1.male, p6.y1.female, p6.y1.black, p6.y1.white, p2.y1.work,
                                                   "Effective Wage", "Mean TANF Maximum",  "Unemployment Comp.",
                                                   "Ovr. Unemp. Rate t",
                                                   "Ovr. Unemp. Rate t-1",
-                                                  "Ovr. Unemp. Rate t-2","Ovr. Unemp. Rate t-3"),
-          dep.var.labels=c("Male","Female","Black","White","WA"), header=F, p.auto=F,
+                                                  "Ovr. Unemp. Rate t-2","Ovr. Unemp. Rate t-3",
+                                                  "Disab. Imputed",
+                                                  "Marriage Imputed"),
+           dep.var.labels.include = FALSE,
+          column.labels = c("Male","Female","Black","White","WA"), header=F, p.auto=F,
           notes=c("Clustered Standard Errors by State and Year.", "Weighted by State-Year total pop."),
           se = alt.y1.fe.robust.se, p=alt.y1.fe.robust.p, 
           star.cutoffs = c(.05, .01, .001), star.char = c("*","**","***"),
@@ -552,29 +563,29 @@ stargazer(p6.y1.male, p6.y1.female, p6.y1.black, p6.y1.white, p2.y1.work,
 
 ```{r, warning=F, include=F}
 fe.ov <- fe.ov %>% mutate(year.lin = YEAR-2010)
-with(fe.ov, table(YEAR, year.lin))
+#with(fe.ov, table(YEAR, year.lin)) #check recode
 
 y1.fe.int <- plm(p6.y1.notemployed.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
                    p6.disab.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+t.unemp.rate+
-                  t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+year.lin+year.lin*pctexfel,
+                  t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+year.lin+year.lin:pctexfel,
                   data = fe.ov, weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
 y1.fe.robust.int <- coeftest(y1.fe.int, vcov=vcovHC(y1.fe.int,type="HC0",cluster=c("group","time")))
 
 y2.fe.int <- plm(p6.y2.unemployed.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
                    p6.disab.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+
-                  t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+year.lin+year.lin*pctexfel,
+                  t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+year.lin+year.lin:pctexfel,
                   data = fe.ov, weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
 y2.fe.robust.int <- coeftest(y2.fe.int, vcov=vcovHC(y2.fe.int,type="HC0",cluster=c("group","time")))
 
 y3.fe.int <- plm(p6.y3.idle.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
                    p6.disab.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+t.unemp.rate+
-                  t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+year.lin+year.lin*pctexfel,
+                  t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+year.lin+year.lin:pctexfel,
                   data = fe.ov, weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
 y3.fe.robust.int <- coeftest(y3.fe.int, vcov=vcovHC(y3.fe.int,type="HC0",cluster=c("group","time")))
 
 y4.fe.int <- plm(p6.y4.cfw.rate~pctexfel+popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
                    p6.disab.rate+p6.marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+t.unemp.rate+
-                  t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+year.lin+year.lin*pctexfel,
+                  t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+year.lin+year.lin:pctexfel,
                   data = fe.ov, weights = norm.weight, index = c("STATENAME","YEAR"), model="within",effect="twoway")
 y4.fe.robust.int <- coeftest(y4.fe.int, vcov=vcovHC(y4.fe.int,type="HC0",cluster=c("group","time")))
 
@@ -607,6 +618,8 @@ stargazer(y1.fe.int, y2.fe.int, y3.fe.int, y4.fe.int,
 
 ### Rolling-Window Models and Plot
 ```{r, include=F}
+#overall plot
+
 window <- 2 #window either side!
 start <- 1987
 end <- 2008
@@ -656,6 +669,119 @@ ggplot(bt, aes(x=start.year, y=est)) +
   ggtitle("Felony History Pct. FE Coefficient Over Time - Rolling Window Estimates")
 
 ```
+
+\pagebreak
+
+```{r, include=F}
+#male plot
+
+window <- 2 #window either side!
+start <- 1987
+end <- 2008
+
+
+start.year <- c(start:end)
+est <- rep(NA, length(start.year))
+up <- rep(NA, length(start.year))
+down <- rep(NA, length(start.year))
+bt <- data.frame(cbind(start.year, est, up, down))
+
+
+for (i in start:end) {
+  
+m <- lm(p6.y1.notemployed.rate~pctexfel+as.factor(STATENAME)+as.factor(YEAR)+
+                     +popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                       p6.disab.rate+marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+
+                        t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate,
+                  data = fe.p6.m[fe.p6.m$YEAR >= (i-window) & fe.p6.m$YEAR <= (i+window),], weights = norm.weight)
+
+bt[start.year==i,2] <- coef(m)[2]
+
+clust.se <- coeftest(m, vcov=vcovHC(m,type="HC0",cluster=c("group","time")))[2,2]
+
+bt[start.year==i,3] <- coef(m)[2]-(1.96*clust.se)
+bt[start.year==i,4] <- coef(m)[2]+(1.96*clust.se)
+
+
+}
+
+
+
+```
+
+```{r, results='asis', echo=F}
+ggplot(bt, aes(x=start.year, y=est)) +
+  geom_point(shape=21, fill="green", size=2)+
+  geom_line()+
+  geom_errorbar(aes(ymin=down, ymax=up), width=.3)+
+  #geom_smooth(method="loess",se=F, colour="blue")+
+  geom_hline(yintercept=0, linetype="dashed", 
+                color = "red", size=.5)+
+  scale_x_continuous(limits = c(1986, 2009), breaks = c(seq(1986,2009,2))) +
+  theme_bw()+
+  xlab("5-Year Window Center")+
+  ylab("Estimate")+
+  ggtitle("Male Felony History Pct. FE Coefficient Over Time - Rolling Window Estimates")
+
+```
+
+\pagebreak
+
+```{r, include=F}
+#female plot
+
+window <- 2 #window either side!
+start <- 1987
+end <- 2008
+
+
+start.year <- c(start:end)
+est <- rep(NA, length(start.year))
+up <- rep(NA, length(start.year))
+down <- rep(NA, length(start.year))
+bt <- data.frame(cbind(start.year, est, up, down))
+
+
+for (i in start:end) {
+  
+m <- lm(p6.y1.notemployed.rate~pctexfel+as.factor(STATENAME)+as.factor(YEAR)+
+                     +popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                       p6.disab.rate+marriage.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+
+                        t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate,
+                  data = fe.p6.female[fe.p6.female$YEAR >= (i-window) & fe.p6.female$YEAR <= (i+window),], weights = norm.weight)
+
+bt[start.year==i,2] <- coef(m)[2]
+
+clust.se <- coeftest(m, vcov=vcovHC(m,type="HC0",cluster=c("group","time")))[2,2]
+
+bt[start.year==i,3] <- coef(m)[2]-(1.96*clust.se)
+bt[start.year==i,4] <- coef(m)[2]+(1.96*clust.se)
+
+
+}
+
+
+
+```
+
+```{r, results='asis', echo=F}
+ggplot(bt, aes(x=start.year, y=est)) +
+  geom_point(shape=21, fill="green", size=2)+
+  geom_line()+
+  geom_errorbar(aes(ymin=down, ymax=up), width=.3)+
+  #geom_smooth(method="loess",se=F, colour="blue")+
+  geom_hline(yintercept=0, linetype="dashed", 
+                color = "red", size=.5)+
+  scale_x_continuous(limits = c(1986, 2009), breaks = c(seq(1986,2009,2))) +
+  theme_bw()+
+  xlab("5-Year Window Center")+
+  ylab("Estimate")+
+  ggtitle("Male Felony History Pct. FE Coefficient Over Time - Rolling Window Estimates")
+
+```
+
+
+
 
 \pagebreak
 
@@ -753,7 +879,7 @@ ggplot(usa) +
                        breaks = c(seq(1,8,1)),
                        limits = c(1,8),
                       name = "Percent") +
-  ggtitle("Ex-Felon Density in the United States: 1980-2010",
+  ggtitle("Felony History Pct. in the United States: 1980-2010",
           subtitle = "Shannon et al. 2017")+
   theme(axis.text = element_blank(),
   axis.line = element_blank(),
@@ -777,7 +903,7 @@ ggplot(usa.1980) +
                        breaks = c(seq(0,13,2)),
                        limits = c(0,13),
                       name = "Percent") +
-  ggtitle("Ex-Felon Density in the United States: 1980",
+  ggtitle("Felony History Pct. in the United States: 1980",
           subtitle = "Shannon et al. 2017")+
   theme(axis.text = element_blank(),
   axis.line = element_blank(),
@@ -801,7 +927,7 @@ ggplot(usa.2010) +
                        breaks = c(seq(0,13,2)),
                        limits = c(0,13),
                       name = "Percent") +
-  ggtitle("Ex-Felon Density in the United States: 2010",
+  ggtitle("Felony History Pct. in the United States: 2010",
           subtitle = "Shannon et al. 2017")+
   theme(axis.text = element_blank(),
   axis.line = element_blank(),
@@ -816,17 +942,17 @@ ggplot(usa.2010) +
 ```
 
 
-```{r, eval=F, include=F}
-usa.t <- states %>% inner_join(., fd.t, by = "id") #fd.t being state-year dataframe
+```{r, echo=F, fig.show='animate', eval=F}
+usa.t <- states %>% inner_join(fd.t, by = "id") #fd.t being state-year dataframe
 
 map <- ggplot(usa.t) +
-  geom_sf(aes(geometry = geometry, fill=density, frame = YEAR)) + #frame = specifies animation
+  geom_sf(aes(geometry = geometry, fill=density)) + #frame = specifies animation
     coord_sf(crs=2163)+
   scale_fill_distiller(palette = "Spectral",
                        breaks = c(seq(0,13,2)),
                        limits = c(0,13),
                       name = "Percent") +
-  ggtitle("Ex-Felon Density in the United States: ",
+  ggtitle("Ex-Felon Density in the United States: {current_frame}",
           subtitle = "Shannon et al. 2017")+
   theme(axis.text = element_blank(),
   axis.line = element_blank(),
@@ -837,12 +963,8 @@ map <- ggplot(usa.t) +
   panel.background = element_blank(),
   plot.subtitle = element_text(face="italic"),
   panel.grid.major = element_line(colour="transparent"),
-  plot.title = element_text(face="bold"))
+  plot.title = element_text(face="bold"))+
+  transition_manual(YEAR)
 
-gganimate(map, interval=1.5, ani.width = 750, ani.height = 450,
-          filename = "density_time.gif", saver = "gif", title_frame = TRUE)
+animate(map, fps = 1, device = 'png')
 ```
-
-
-
- 

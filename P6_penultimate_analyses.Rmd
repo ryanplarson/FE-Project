@@ -68,7 +68,7 @@ ggplot(ne, aes(y=(100-ne.rate), x=YEAR)) +
 
 
 ```{r,echo=F, results='asis'}
-stargazer(fe.ov[,c(22,15:18,5:14, 19:21, 24:26)], type="latex", style="asr", title="Unweighted Descriptive Statistics",
+stargazer(fe.ov[fe.ov$YEAR >= 1988,c(22,15:18,5:14, 19:21, 24:26)], type="latex", style="asr", title="Unweighted Descriptive Statistics",
           summary=T, median=T, covariate.labels=c("Felony History Pct.","Not Employed Rate","Unemployment Rate", 
                                                   "Idleness Rate", "Can't Find Work Rate",
                                                   "Population Share 16-25","Population Share 26-35",
@@ -84,7 +84,7 @@ stargazer(fe.ov[,c(22,15:18,5:14, 19:21, 24:26)], type="latex", style="asr", tit
 
 
 ```{r, include=F}
-corr<-round(cor(fe.ov[,-c(1:14,27,28)], use="pairwise.complete.obs", method="pearson" ),2)
+corr<-round(cor(fe.ov[fe.ov$YEAR >= 1988,-c(1:14,27,28)], use="pairwise.complete.obs", method="pearson" ),2)
 corr[upper.tri(corr)] <-""
 upper <- as.matrix(corr)
 rownames(upper) <- c("Not Employed Rate","Unemployment Rate", "Idleness Rate", "Can't Find Work Rate",
@@ -93,7 +93,7 @@ rownames(upper) <- c("Not Employed Rate","Unemployment Rate", "Idleness Rate", "
                                                   "Effective Wage","Mean TANF Maximum",
                                                   "Unemployment Comp.")
 
-corr2<-round(cor(fe.ov[,c(15:18,22)], use="pairwise.complete.obs", method="pearson" ),2)
+corr2<-round(cor(fe.ov[fe.ov$YEAR >= 1988,c(15:18,22)], use="pairwise.complete.obs", method="pearson" ),2)
 corr2[upper.tri(corr2)] <-""
 upper2 <- as.matrix(corr2)
 rownames(upper2) <- c("Not Employed Rate","Unemployment Rate", "Idleness Rate", "Can't Find Work Rate","Felony History Pct.")
@@ -111,7 +111,8 @@ stargazer(upper, header=F, title="Pairwise Correlations", font.size="small", col
 
 
 ```{r, include=F}
-fe.fd <- fe.ov %>% select(YEAR, STATENAME, p6.y1.notemployed.rate, p6.y3.idle.rate, 
+fe.fd <- fe.ov %>% filter( YEAR >= 1988) %>%
+  select(YEAR, STATENAME, p6.y1.notemployed.rate, p6.y3.idle.rate, 
                       p6.y2.unemployed.rate, p6.y4.cfw.rate, pctexfel, time.indicator) %>% 
                group_by(STATENAME) %>%
                mutate(p6.y1.fd = p6.y1.notemployed.rate - dplyr::lag(p6.y1.notemployed.rate),
@@ -666,7 +667,7 @@ ggplot(bt, aes(x=start.year, y=est)) +
   theme_bw()+
   xlab("5-Year Window Center")+
   ylab("Estimate")+
-  ggtitle("Felony History Pct. FE Coefficient Over Time - Rolling Window Estimates")
+  ggtitle("Felony History Pct. FE Coefficient Over Time")
 
 ```
 
@@ -721,7 +722,7 @@ ggplot(bt, aes(x=start.year, y=est)) +
   theme_bw()+
   xlab("5-Year Window Center")+
   ylab("Estimate")+
-  ggtitle("Male Felony History Pct. FE Coefficient Over Time - Rolling Window Estimates")
+  ggtitle("Male Felony History Pct. FE Coefficient Over Time")
 
 ```
 
@@ -776,7 +777,7 @@ ggplot(bt, aes(x=start.year, y=est)) +
   theme_bw()+
   xlab("5-Year Window Center")+
   ylab("Estimate")+
-  ggtitle("Male Felony History Pct. FE Coefficient Over Time - Rolling Window Estimates")
+  ggtitle("Female Felony History Pct. FE Coefficient Over Time")
 
 ```
 

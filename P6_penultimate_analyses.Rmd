@@ -32,6 +32,15 @@ library(gganimate)
 library(fiftystater)
 library(imputeTS)
 
+#Table 3: switch blocks of predictors - model 3 lags, model 4 policy vars
+#demography
+#chris crim deportation paper analysis
+#scatterplot of first differences at the year level
+
+#sarah give numerators, divide by tailored pops, plot first differences against each other, 
+  #follow crim deportation paper, both in percentage point change
+
+#another difference? welfare bans
 
 #loading in data/setting working directory
 #setwd("C:/Users/DELL/Documents/FE 2017") #set to google drive local folder

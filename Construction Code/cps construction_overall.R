@@ -43,6 +43,9 @@ cps$ya <- ifelse(cps$AGE>=18 & cps$AGE<=25, "Young-Adult", "Adult")
 #p6 age designation
 cps$psix <- ifelse(cps$AGE>=18 & cps$AGE<=54, "Yes", "No")
 
+#p7 age designation
+cps$pseven <- ifelse(cps$AGE>=18 & cps$AGE<=40, "Yes", "No")
+
 #gender binary
 cps$gender <- ifelse(cps$SEX==1, "Male", "Female")
 
@@ -467,6 +470,12 @@ cps.emp <- left_join(cps.emp, cps.p2.marry.f, by = c("YEAR","STATENAME")) %>%
  # mutate(p2.cohab.rate = 100*(p2.cohab.raw/p2.pop))
 
 
+
+
+
+
+
+
 #########################
 ###  P3: prime-age all men
 #########################
@@ -825,6 +834,15 @@ cps.p6.marry <- cps %>% select(YEAR, STATENAME, marry, psix, WTFINL) %>%
 cps.emp <- left_join(cps.emp, cps.p6.marry, by = c("YEAR","STATENAME")) %>%
   mutate(p6.marriage.rate = 100*(p6.marry.raw/p6.pop))
 
+#overall p6 education
+cps.p6.degree <- cps %>% select(YEAR, STATENAME, degree, psix, WTFINL) %>% 
+  group_by(YEAR, STATENAME, degree, psix) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_degree, psix, degree) %>%
+  spread(age_degree, overall) %>% select(YEAR, STATENAME, 'Yes_Yes') %>% rename(p6.degree.raw = 'Yes_Yes') 
+
+cps.emp <- left_join(cps.emp, cps.p6.degree, by = c("YEAR","STATENAME")) %>%
+  mutate(p6.degree.rate = 100*(p6.degree.raw/p6.pop))
+
 
 #######
 # p6 gender breakdowns
@@ -959,6 +977,355 @@ cps.p6.marry.f <- cps %>% select(YEAR, STATENAME, marry, psix, gender, WTFINL) %
 cps.emp <- left_join(cps.emp, cps.p6.marry.f, by = c("YEAR","STATENAME")) %>%
   mutate(p6.marriage.rate.female = 100*(p6.marry.raw.female/p6.pop.female))
 
+#p6 education male
+cps.p6.degree.m <- cps %>% select(YEAR, STATENAME, degree, psix, gender, WTFINL) %>% 
+  group_by(YEAR, STATENAME, degree, psix, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_gen, psix, gender) %>% unite(age_gen_degree, age_gen, degree) %>%
+  spread(age_gen_degree, overall) %>% select(YEAR, STATENAME, Yes_Male_Yes) %>% rename(p6.degree.raw.m = Yes_Male_Yes) 
+
+cps.emp <- left_join(cps.emp, cps.p6.degree.m, by = c("YEAR","STATENAME")) %>%
+  mutate(p6.degree.rate.m = 100*(p6.degree.raw.m/p6.pop.m))
+
+#p6 education female
+cps.p6.degree.f <- cps %>% select(YEAR, STATENAME, degree, psix, gender, WTFINL) %>% 
+  group_by(YEAR, STATENAME, degree, psix, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_gen, psix, gender) %>% unite(age_gen_degree, age_gen, degree) %>%
+  spread(age_gen_degree, overall) %>% select(YEAR, STATENAME, Yes_Female_Yes) %>% rename(p6.degree.raw.female = Yes_Female_Yes) 
+
+cps.emp <- left_join(cps.emp, cps.p6.degree.f, by = c("YEAR","STATENAME")) %>%
+  mutate(p6.degree.rate.female = 100*(p6.degree.raw.female/p6.pop.female))
+
+
+##################################################################
+#P7: male/Female 18-40
+
+#p7
+cps.p7 <- cps %>% select(YEAR, STATENAME, pseven, WTFINL) %>% 
+  group_by(YEAR, STATENAME, pseven) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  spread(pseven, overall) %>%
+  rename(p7.pop='Yes') %>% select(YEAR, STATENAME,p7.pop)
+
+cps.emp <- left_join(cps.emp, cps.p7, by = c("YEAR","STATENAME"))
+
+
+#p7.y1
+cps.p7.y1 <- cps %>% select(YEAR, STATENAME, employed.share, pseven, WTFINL) %>% 
+  group_by(YEAR, STATENAME, employed.share, pseven) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_emp, pseven, employed.share) %>%
+  spread(age_emp, overall) %>% select(YEAR, STATENAME, 'Yes_Not Employed') %>% 
+  rename(p7.y1.raw = 'Yes_Not Employed')
+
+cps.emp <- left_join(cps.emp, cps.p7.y1, by = c("YEAR","STATENAME")) %>%
+  mutate(p7.y1.notemployed.rate = 100*(p7.y1.raw/p7.pop))
+
+#p7.y2 
+cps.p7.y2 <- cps %>% select(YEAR, STATENAME, employed, pseven, WTFINL) %>% 
+  group_by(YEAR, STATENAME, employed, pseven) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_emp, pseven, employed) %>%
+  spread(age_emp, overall) %>% select(YEAR, STATENAME, 'Yes_Employed', 'Yes_Unemployed') %>%
+  rename(p7.y2.raw = 'Yes_Unemployed', p7.y2.raw.e = 'Yes_Employed') %>%
+  mutate(p7.y2.unemployed.rate = 100*(p7.y2.raw/(p7.y2.raw+p7.y2.raw.e))) %>%
+  select(YEAR, STATENAME, p7.y2.raw, p7.y2.unemployed.rate) 
+
+cps.emp <- left_join(cps.emp, cps.p7.y2, by = c("YEAR","STATENAME"))
+
+
+
+#p7.y3
+cps.p7.y3 <- cps %>% select(YEAR, STATENAME, idle, pseven, WTFINL) %>% 
+  group_by(YEAR, STATENAME, idle, pseven) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_emp, pseven, idle) %>%
+  spread(age_emp, overall) %>% select(YEAR, STATENAME, 'Yes_Idle') %>% 
+  rename(p7.y3.raw = 'Yes_Idle')
+
+cps.emp <- left_join(cps.emp, cps.p7.y3, by = c("YEAR","STATENAME")) %>%
+  mutate(p7.y3.idle.rate = 100*(p7.y3.raw/p7.pop))
+
+
+#p7.y4
+cps.p7.y4 <- cps %>% select(YEAR, STATENAME, cfw, pseven, WTFINL) %>% 
+  group_by(YEAR, STATENAME, cfw, pseven) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_emp, pseven, cfw) %>%
+  spread(age_emp, overall) %>% select(YEAR, STATENAME, 'Yes_cfw') %>% 
+  rename(p7.y4.raw = 'Yes_cfw')
+
+cps.emp <- left_join(cps.emp, cps.p7.y4, by = c("YEAR","STATENAME")) %>%
+  mutate(p7.y4.cfw.rate = 100*(p7.y4.raw/p7.pop))
+
+
+
+
+#marriage and cohabitation rates
+cps.p7.marry <- cps %>% select(YEAR, STATENAME, marry, pseven, WTFINL) %>% 
+  group_by(YEAR, STATENAME, marry, pseven) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_marry, pseven, marry) %>%
+  spread(age_marry, overall) %>% select(YEAR, STATENAME, 'Yes_Yes') %>% rename(p7.marry.raw = 'Yes_Yes') 
+
+cps.emp <- left_join(cps.emp, cps.p7.marry, by = c("YEAR","STATENAME")) %>%
+  mutate(p7.marriage.rate = 100*(p7.marry.raw/p7.pop))
+
+#overall p7 education
+cps.p7.degree <- cps %>% select(YEAR, STATENAME, degree, pseven, WTFINL) %>% 
+  group_by(YEAR, STATENAME, degree, pseven) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_degree, pseven, degree) %>%
+  spread(age_degree, overall) %>% select(YEAR, STATENAME, 'Yes_Yes') %>% rename(p7.degree.raw = 'Yes_Yes') 
+
+cps.emp <- left_join(cps.emp, cps.p7.degree, by = c("YEAR","STATENAME")) %>%
+  mutate(p7.degree.rate = 100*(p7.degree.raw/p7.pop))
+
+
+#######
+# p7 gender breakdowns
+
+
+#p7.male
+cps.p7.m <- cps %>% select(YEAR, STATENAME, pseven, gender,WTFINL) %>% 
+  group_by(YEAR, STATENAME, pseven, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_gen, pseven, gender) %>% spread(age_gen, overall) %>%
+  rename(p7.pop.m=Yes_Male) %>% select(YEAR, STATENAME,p7.pop.m)
+
+cps.emp <- left_join(cps.emp, cps.p7.m, by = c("YEAR","STATENAME"))
+
+#p7.female
+cps.p7.f <- cps %>% select(YEAR, STATENAME, pseven, gender,WTFINL) %>% 
+  group_by(YEAR, STATENAME, pseven, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_gen, pseven, gender) %>% spread(age_gen, overall) %>%
+  rename(p7.pop.female=Yes_Female) %>% select(YEAR, STATENAME,p7.pop.female)
+
+cps.emp <- left_join(cps.emp, cps.p7.f, by = c("YEAR","STATENAME"))
+
+
+#p7.y1.male
+cps.p7.y1.m <- cps %>% select(YEAR, STATENAME, employed.share, pseven, gender, WTFINL) %>% 
+  group_by(YEAR, STATENAME, employed.share, pseven, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_gen, pseven, gender) %>%
+  unite(age_gen_emp, age_gen, employed.share) %>%
+  spread(age_gen_emp, overall) %>% select(YEAR, STATENAME, 'Yes_Male_Not Employed') %>% 
+  rename(p7.y1.raw.m = 'Yes_Male_Not Employed')
+
+cps.emp <- left_join(cps.emp, cps.p7.y1.m, by = c("YEAR","STATENAME")) %>%
+  mutate(p7.y1.notemployed.rate.m = 100*(p7.y1.raw.m/p7.pop.m))
+
+#p7.y1.female
+cps.p7.y1.f <- cps %>% select(YEAR, STATENAME, employed.share, pseven, gender, WTFINL) %>% 
+  group_by(YEAR, STATENAME, employed.share, pseven, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_gen, pseven, gender) %>%
+  unite(age_gen_emp, age_gen, employed.share) %>%
+  spread(age_gen_emp, overall) %>% select(YEAR, STATENAME, 'Yes_Female_Not Employed') %>% 
+  rename(p7.y1.raw.female = 'Yes_Female_Not Employed')
+
+cps.emp <- left_join(cps.emp, cps.p7.y1.f, by = c("YEAR","STATENAME")) %>%
+  mutate(p7.y1.notemployed.rate.female = 100*(p7.y1.raw.female/p7.pop.female))
+
+#p7.y2 .male
+cps.p7.y2.m <- cps %>% select(YEAR, STATENAME, employed, pseven, gender, WTFINL) %>% 
+  group_by(YEAR, STATENAME, employed, pseven, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_gen, pseven, gender) %>%
+  unite(age_gen_emp, age_gen, employed) %>%
+  spread(age_gen_emp, overall) %>% select(YEAR, STATENAME, 'Yes_Male_Employed', 'Yes_Male_Unemployed') %>%
+  rename(p7.y2.raw.m = 'Yes_Male_Unemployed', p7.y2.raw.e = 'Yes_Male_Employed') %>%
+  mutate(p7.y2.unemployed.rate.m = 100*(p7.y2.raw.m/(p7.y2.raw.m+p7.y2.raw.e))) %>%
+  select(YEAR, STATENAME, p7.y2.raw.m, p7.y2.unemployed.rate.m) 
+
+
+cps.emp <- left_join(cps.emp, cps.p7.y2.m, by = c("YEAR","STATENAME"))
+
+#p7.y2.female
+cps.p7.y2.f <- cps %>% select(YEAR, STATENAME, employed, pseven, gender, WTFINL) %>% 
+  group_by(YEAR, STATENAME, employed, pseven, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_gen, pseven, gender) %>%
+  unite(age_gen_emp, age_gen, employed) %>%
+  spread(age_gen_emp, overall) %>% select(YEAR, STATENAME, 'Yes_Female_Employed', 'Yes_Female_Unemployed') %>%
+  rename(p7.y2.raw.female = 'Yes_Female_Unemployed', p7.y2.raw.e.female = 'Yes_Female_Employed') %>%
+  mutate(p7.y2.unemployed.rate.female = 100*(p7.y2.raw.female/(p7.y2.raw.female+p7.y2.raw.e.female))) %>%
+  select(YEAR, STATENAME, p7.y2.raw.female, p7.y2.unemployed.rate.female) 
+
+cps.emp <- left_join(cps.emp, cps.p7.y2.f, by = c("YEAR","STATENAME"))
+
+
+#p7.y3.male
+cps.p7.y3.m <- cps %>% select(YEAR, STATENAME, idle, pseven, gender, WTFINL) %>% 
+  group_by(YEAR, STATENAME, idle, pseven, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_gen, pseven, gender) %>%
+  unite(age_gen_emp, age_gen, idle) %>%
+  spread(age_gen_emp, overall) %>% select(YEAR, STATENAME, 'Yes_Male_Idle') %>% 
+  rename(p7.y3.raw.m = 'Yes_Male_Idle')
+
+cps.emp <- left_join(cps.emp, cps.p7.y3.m, by = c("YEAR","STATENAME")) %>%
+  mutate(p7.y3.idle.rate.m = 100*(p7.y3.raw.m/p7.pop.m))
+
+#p7.y3.female
+cps.p7.y3.f <- cps %>% select(YEAR, STATENAME, idle, pseven, gender, WTFINL) %>% 
+  group_by(YEAR, STATENAME, idle, pseven, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_gen, pseven, gender) %>%
+  unite(age_gen_emp, age_gen, idle) %>%
+  spread(age_gen_emp, overall) %>% select(YEAR, STATENAME, 'Yes_Female_Idle') %>% 
+  rename(p7.y3.raw.female = 'Yes_Female_Idle')
+
+cps.emp <- left_join(cps.emp, cps.p7.y3.f, by = c("YEAR","STATENAME")) %>%
+  mutate(p7.y3.idle.rate.female = 100*(p7.y3.raw.female/p7.pop.female))
+
+
+#p7.y4.male
+cps.p7.y4.m <- cps %>% select(YEAR, STATENAME, cfw, pseven, gender, WTFINL) %>% 
+  group_by(YEAR, STATENAME, cfw, pseven, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_gen, pseven, gender) %>%
+  unite(age_gen_emp, age_gen, cfw) %>%
+  spread(age_gen_emp, overall) %>% select(YEAR, STATENAME, 'Yes_Male_cfw') %>% 
+  rename(p7.y4.raw.m = 'Yes_Male_cfw')
+
+cps.emp <- left_join(cps.emp, cps.p7.y4.m, by = c("YEAR","STATENAME")) %>%
+  mutate(p7.y4.cfw.rate.m = 100*(p7.y4.raw.m/p7.pop.m))
+
+#p7.y4.female
+cps.p7.y4.f <- cps %>% select(YEAR, STATENAME, cfw, pseven, gender, WTFINL) %>% 
+  group_by(YEAR, STATENAME, cfw, pseven, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_gen, pseven, gender) %>%
+  unite(age_gen_emp, age_gen, cfw) %>%
+  spread(age_gen_emp, overall) %>% select(YEAR, STATENAME, 'Yes_Female_cfw') %>% 
+  rename(p7.y4.raw.female = 'Yes_Female_cfw')
+
+cps.emp <- left_join(cps.emp, cps.p7.y4.f, by = c("YEAR","STATENAME")) %>%
+  mutate(p7.y4.cfw.rate.female = 100*(p7.y4.raw.female/p7.pop.female))
+
+#marriage and cohabitation rates.male
+cps.p7.marry.m <- cps %>% select(YEAR, STATENAME, marry, pseven, gender, WTFINL) %>% 
+  group_by(YEAR, STATENAME, marry, pseven, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_gen, pseven, gender) %>% unite(age_gen_marry, age_gen, marry) %>%
+  spread(age_gen_marry, overall) %>% select(YEAR, STATENAME, Yes_Male_Yes) %>% rename(p7.marry.raw.m = Yes_Male_Yes) 
+
+cps.emp <- left_join(cps.emp, cps.p7.marry.m, by = c("YEAR","STATENAME")) %>%
+  mutate(p7.marriage.rate.m = 100*(p7.marry.raw.m/p7.pop.m))
+
+#marriage.female
+cps.p7.marry.f <- cps %>% select(YEAR, STATENAME, marry, pseven, gender, WTFINL) %>% 
+  group_by(YEAR, STATENAME, marry, pseven, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_gen, pseven, gender) %>% unite(age_gen_marry, age_gen, marry) %>%
+  spread(age_gen_marry, overall) %>% select(YEAR, STATENAME, Yes_Female_Yes) %>% rename(p7.marry.raw.female = Yes_Female_Yes) 
+
+cps.emp <- left_join(cps.emp, cps.p7.marry.f, by = c("YEAR","STATENAME")) %>%
+  mutate(p7.marriage.rate.female = 100*(p7.marry.raw.female/p7.pop.female))
+
+#p7 education male
+cps.p7.degree.m <- cps %>% select(YEAR, STATENAME, degree, pseven, gender, WTFINL) %>% 
+  group_by(YEAR, STATENAME, degree, pseven, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_gen, pseven, gender) %>% unite(age_gen_degree, age_gen, degree) %>%
+  spread(age_gen_degree, overall) %>% select(YEAR, STATENAME, Yes_Male_Yes) %>% rename(p7.degree.raw.m = Yes_Male_Yes) 
+
+cps.emp <- left_join(cps.emp, cps.p7.degree.m, by = c("YEAR","STATENAME")) %>%
+  mutate(p7.degree.rate.m = 100*(p7.degree.raw.m/p7.pop.m))
+
+#p7 education female
+cps.p7.degree.f <- cps %>% select(YEAR, STATENAME, degree, pseven, gender, WTFINL) %>% 
+  group_by(YEAR, STATENAME, degree, pseven, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_gen, pseven, gender) %>% unite(age_gen_degree, age_gen, degree) %>%
+  spread(age_gen_degree, overall) %>% select(YEAR, STATENAME, Yes_Female_Yes) %>% rename(p7.degree.raw.female = Yes_Female_Yes) 
+
+cps.emp <- left_join(cps.emp, cps.p7.degree.f, by = c("YEAR","STATENAME")) %>%
+  mutate(p7.degree.rate.female = 100*(p7.degree.raw.female/p7.pop.female))
+
+#####################################################################
+#P8: Working age no education subset
+
+#################################################################
+#p8 overall
+cps.p8 <- cps %>% select(YEAR, STATENAME, work.age, WTFINL) %>%
+  group_by(YEAR, STATENAME, work.age) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>%
+  spread(work.age, overall) %>%
+  rename(p8.pop='Working Age') %>% select(YEAR, STATENAME,p8.pop)
+
+cps.emp <- left_join(cps.emp, cps.p8, by = c("YEAR","STATENAME"))
+
+#p8.m
+cps.p8.m <- cps %>% select(YEAR, STATENAME, work.age, gender,WTFINL) %>% 
+  group_by(YEAR, STATENAME, work.age, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_gender, work.age, gender) %>%  spread(age_gender, overall) %>%
+  rename(p8.pop.m='Working Age_Male') %>% select(YEAR, STATENAME,p8.pop.m)
+
+cps.emp <- left_join(cps.emp, cps.p8.m, by = c("YEAR","STATENAME")) 
+
+#p8.female
+cps.p8.f <- cps %>% select(YEAR, STATENAME,  work.age, gender,WTFINL) %>% 
+  group_by(YEAR, STATENAME, work.age, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_gender, work.age, gender) %>%   spread(age_gender, overall) %>%
+  rename(p8.pop.female='Working Age_Female') %>% select(YEAR, STATENAME, p8.pop.female)
+
+cps.emp <- left_join(cps.emp, cps.p8.f, by = c("YEAR","STATENAME"))
+
+#p8.y1.m
+cps.p8.y1.m <- cps %>% select(YEAR, STATENAME, employed.share, work.age, gender, WTFINL) %>% 
+  group_by(YEAR, STATENAME, employed.share, work.age, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(gender_age, gender, work.age) %>%  
+  unite(gender_age_emp, gender_age, employed.share) %>%
+  spread(gender_age_emp, overall) %>% select(YEAR, STATENAME, 'Male_Working Age_Not Employed') %>% 
+  rename(p8.y1.raw.m = 'Male_Working Age_Not Employed')
+
+cps.emp <- left_join(cps.emp, cps.p8.y1.m, by = c("YEAR","STATENAME")) %>%
+  mutate(p8.y1.notemployed.rate.m = 100*(p8.y1.raw.m/p8.pop.m))
+
+#p8.y1.female
+cps.p8.y1.f <- cps %>% select(YEAR, STATENAME, employed.share, work.age, gender, WTFINL) %>% 
+  group_by(YEAR, STATENAME, employed.share, work.age, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(gender_age, gender, work.age) %>%  
+  unite(gender_age_emp, gender_age, employed.share) %>%
+  spread(gender_age_emp, overall) %>% select(YEAR, STATENAME, 'Female_Working Age_Not Employed') %>% 
+  rename(p8.y1.raw.f = 'Female_Working Age_Not Employed')
+
+cps.emp <- left_join(cps.emp, cps.p8.y1.f, by = c("YEAR","STATENAME")) %>%
+  mutate(p8.y1.notemployed.rate.f = 100*(p8.y1.raw.f/p8.pop.female))
+
+#for now not doing y2-y4 unless needed
+
+
+
+#marriage and cohabitation rates
+cps.p8.marry.m <- cps %>% select(YEAR, STATENAME, marry, work.age, gender, WTFINL) %>% 
+  group_by(YEAR, STATENAME, marry, work.age, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(gender_age, gender, work.age) %>%  unite(gender_age_marry, gender_age, marry) %>%
+  spread(gender_age_marry, overall) %>% select(YEAR, STATENAME, 'Male_Working Age_Yes') %>% 
+  rename(p8.marry.raw.m = 'Male_Working Age_Yes') 
+
+cps.emp <- left_join(cps.emp, cps.p8.marry.m, by = c("YEAR","STATENAME")) %>%
+  mutate(p8.marriage.rate.m = 100*(p8.marry.raw.m/p8.pop.m))
+
+cps.p8.marry.f <- cps %>% select(YEAR, STATENAME, marry, work.age, gender, WTFINL) %>% 
+  group_by(YEAR, STATENAME, marry, work.age, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(gender_age, gender, work.age) %>%  unite(gender_age_marry, gender_age, marry) %>%
+  spread(gender_age_marry, overall) %>% select(YEAR, STATENAME, 'Female_Working Age_Yes') %>% 
+  rename(p8.marry.raw.female = 'Female_Working Age_Yes') 
+
+cps.emp <- left_join(cps.emp, cps.p8.marry.f, by = c("YEAR","STATENAME")) %>%
+  mutate(p8.marriage.rate.female = 100*(p8.marry.raw.female/p8.pop.female))
+
+#p8 education overall
+#overall p8 education
+cps.p8.degree <- cps %>% select(YEAR, STATENAME, degree, work.age, WTFINL) %>% 
+  group_by(YEAR, STATENAME, degree, work.age) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_degree, work.age, degree) %>%
+  spread(age_degree, overall) %>% select(YEAR, STATENAME, 'Working Age_Yes') %>% rename(p8.degree.raw = 'Working Age_Yes') 
+
+cps.emp <- left_join(cps.emp, cps.p8.degree, by = c("YEAR","STATENAME")) %>%
+  mutate(p8.degree.rate = 100*(p8.degree.raw/p8.pop))
+
+#p8 gender-specific education rates
+#p8 education male
+cps.p8.degree.m <- cps %>% select(YEAR, STATENAME, degree, work.age, gender, WTFINL) %>% 
+  group_by(YEAR, STATENAME, degree, work.age, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_gen, work.age, gender) %>% unite(age_gen_degree, age_gen, degree) %>%
+  spread(age_gen_degree, overall) %>% select(YEAR, STATENAME, 'Working Age_Male_Yes') %>% rename(p8.degree.raw.m = 'Working Age_Male_Yes') 
+
+cps.emp <- left_join(cps.emp, cps.p8.degree.m, by = c("YEAR","STATENAME")) %>%
+  mutate(p8.degree.rate.m = 100*(p8.degree.raw.m/p8.pop.m))
+
+#p8 education female
+cps.p8.degree.f <- cps %>% select(YEAR, STATENAME, degree, work.age, gender, WTFINL) %>% 
+  group_by(YEAR, STATENAME, degree, work.age, gender) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_gen, work.age, gender) %>% unite(age_gen_degree, age_gen, degree) %>%
+  spread(age_gen_degree, overall) %>% select(YEAR, STATENAME, 'Working Age_Female_Yes') %>% rename(p8.degree.raw.female = 'Working Age_Female_Yes') 
+
+cps.emp <- left_join(cps.emp, cps.p8.degree.f, by = c("YEAR","STATENAME")) %>%
+  mutate(p8.degree.rate.female = 100*(p8.degree.raw.female/p8.pop.female))
+
 #############################
 ### Reconnect State FIPS
 ############################
@@ -1080,6 +1447,9 @@ asec$ya <- ifelse(asec$AGE>=18 & asec$AGE<=25, "Young-Adult", "Adult")
 #p6 age designation
 asec$psix <- ifelse(asec$AGE>=18 & asec$AGE<=54, "Yes", "No")
 
+#p7 age designation
+asec$pseven <- ifelse(asec$AGE>=18 & asec$AGE<=40, "Yes", "No")
+
 #gender binary
 asec$gender <- ifelse(asec$SEX==1, "Male", "Female")
 
@@ -1107,7 +1477,7 @@ rm(states)
 #p1 matching asec covariates
 
 #diability  - prime age males without BA
-asec.p1.dis <- asec %>% select(YEAR, STATENAME, degree,disabin, prime, gender, ASECWT) %>% 
+asec.p1.dis <- asec %>% select(YEAR, STATENAME, degree, disabin, prime, gender, ASECWT) %>% 
   group_by(YEAR, STATENAME, disabin, degree, prime, gender) %>% summarize(overall=sum(ASECWT, na.rm=T)) %>% 
   unite(degree_age, degree, prime) %>%  unite(degree_age_gen, degree_age, gender) %>% unite(degree_age_gen_dis, degree_age_gen, disabin) %>%
   spread(degree_age_gen_dis, overall) %>% select(YEAR, STATENAME, No_Prime_Male_Yes) %>% rename(p1.disab.raw = No_Prime_Male_Yes)
@@ -1221,6 +1591,77 @@ asec.p6.dis.f <- asec %>% select(YEAR, STATENAME, disabin, psix, gender, ASECWT)
 cps.emp <- left_join(cps.emp, asec.p6.dis.f, by = c("YEAR","STATENAME")) %>%
   mutate(p6.disab.rate.female = 100*(p6.disab.raw.female/p6.pop.female))
 
+
+#p7 matching asec covariates
+
+#diability
+asec.p7.dis <- asec %>% select(YEAR, STATENAME, disabin, pseven, ASECWT) %>% 
+  group_by(YEAR, STATENAME, disabin, pseven) %>% summarize(overall=sum(ASECWT, na.rm=T)) %>% 
+  unite(age_dis, pseven, disabin) %>%
+  spread(age_dis, overall) %>% select(YEAR, STATENAME, 'Yes_Yes') %>% rename(p7.disab.raw = 'Yes_Yes')
+
+#disability rate - p7 overall
+cps.emp <- left_join(cps.emp, asec.p7.dis, by = c("YEAR","STATENAME")) %>%
+  mutate(p7.disab.rate = 100*(p7.disab.raw/p7.pop))
+
+#p7 male and female disability
+
+
+#diability
+asec.p7.dis.m <- asec %>% select(YEAR, STATENAME, disabin, pseven, gender, ASECWT) %>% 
+  group_by(YEAR, STATENAME, disabin, pseven, gender) %>% summarize(overall=sum(ASECWT, na.rm=T)) %>% 
+  unite(age_gen, pseven, gender) %>% unite(age_gen_dis, age_gen, disabin) %>%
+  spread(age_gen_dis, overall) %>% select(YEAR, STATENAME, Yes_Male_Yes) %>% rename(p7.disab.raw.m = Yes_Male_Yes)
+
+#disability rate - p7 males 
+cps.emp <- left_join(cps.emp, asec.p7.dis.m, by = c("YEAR","STATENAME")) %>%
+  mutate(p7.disab.rate.m = 100*(p7.disab.raw.m/p7.pop.m))
+
+#p7.female.diability
+asec.p7.dis.f <- asec %>% select(YEAR, STATENAME, disabin, pseven, gender, ASECWT) %>% 
+  group_by(YEAR, STATENAME, disabin, pseven, gender) %>% summarize(overall=sum(ASECWT, na.rm=T)) %>% 
+  unite(age_gen, pseven, gender) %>% unite(age_gen_dis, age_gen, disabin) %>%
+  spread(age_gen_dis, overall) %>% select(YEAR, STATENAME, Yes_Female_Yes) %>% rename(p7.disab.raw.female = Yes_Female_Yes)
+
+#disability rate - p7 females 
+cps.emp <- left_join(cps.emp, asec.p7.dis.f, by = c("YEAR","STATENAME")) %>%
+  mutate(p7.disab.rate.female = 100*(p7.disab.raw.female/p7.pop.female))
+
+
+#p8 matching asec covariates
+
+#diability
+asec.p8.dis <- asec %>% select(YEAR, STATENAME, disabin, work.age, ASECWT) %>% 
+  group_by(YEAR, STATENAME, disabin, work.age) %>% summarize(overall=sum(ASECWT, na.rm=T)) %>% 
+  unite(age_dis, work.age, disabin) %>%
+  spread(age_dis, overall) %>% select(YEAR, STATENAME, 'Working Age_Yes') %>% rename(p8.disab.raw = 'Working Age_Yes')
+
+#disability rate - p8 overall
+cps.emp <- left_join(cps.emp, asec.p8.dis, by = c("YEAR","STATENAME")) %>%
+  mutate(p8.disab.rate = 100*(p8.disab.raw/p8.pop))
+
+#p8 male and female disability
+
+
+#diability
+asec.p8.dis.m <- asec %>% select(YEAR, STATENAME, disabin, work.age, gender, ASECWT) %>% 
+  group_by(YEAR, STATENAME, disabin, work.age, gender) %>% summarize(overall=sum(ASECWT, na.rm=T)) %>% 
+  unite(age_gen, work.age, gender) %>% unite(age_gen_dis, age_gen, disabin) %>%
+  spread(age_gen_dis, overall) %>% select(YEAR, STATENAME, 'Working Age_Male_Yes') %>% rename(p8.disab.raw.m = 'Working Age_Male_Yes')
+
+#disability rate - p8 males 
+cps.emp <- left_join(cps.emp, asec.p8.dis.m, by = c("YEAR","STATENAME")) %>%
+  mutate(p8.disab.rate.m = 100*(p8.disab.raw.m/p8.pop.m))
+
+#p8.female.diability
+asec.p8.dis.f <- asec %>% select(YEAR, STATENAME, disabin, work.age, gender, ASECWT) %>% 
+  group_by(YEAR, STATENAME, disabin, work.age, gender) %>% summarize(overall=sum(ASECWT, na.rm=T)) %>% 
+  unite(age_gen, work.age, gender) %>% unite(age_gen_dis, age_gen, disabin) %>%
+  spread(age_gen_dis, overall) %>% select(YEAR, STATENAME, 'Working Age_Female_Yes') %>% rename(p8.disab.raw.female = 'Working Age_Female_Yes')
+
+#disability rate - p8 females 
+cps.emp <- left_join(cps.emp, asec.p8.dis.f, by = c("YEAR","STATENAME")) %>%
+  mutate(p8.disab.rate.female = 100*(p8.disab.raw.female/p8.pop.female))
 
 
 

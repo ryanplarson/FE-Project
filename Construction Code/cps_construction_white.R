@@ -505,6 +505,15 @@ cps.p6.marry.w <- cps.w %>% select(YEAR, STATENAME, marry, psix, WTFINL) %>%
 cps.emp <- left_join(cps.emp, cps.p6.marry.w, by = c("YEAR","STATENAME")) %>%
   mutate(p6.marriage.rate.w = 100*(p6.marry.raw.w/p6.pop.w))
 
+#p6 white education
+cps.p6.degree.w <- cps.w %>% select(YEAR, STATENAME, degree, psix, WTFINL) %>% 
+  group_by(YEAR, STATENAME, degree, psix) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_degree, psix, degree) %>%
+  spread(age_degree, overall) %>% select(YEAR, STATENAME, 'Yes_Yes') %>% rename(p6.degree.raw.w = 'Yes_Yes') 
+
+cps.emp <- left_join(cps.emp, cps.p6.degree.w, by = c("YEAR","STATENAME")) %>%
+  mutate(p6.degree.rate.w = 100*(p6.degree.raw.w/p6.pop.w))
+
 
 #write.csv(cps.emp, file="FE_white.csv")
 
@@ -629,7 +638,7 @@ cps.emp <- cps.emp %>% filter(STATENAME != "District of Columbia")
 colSums(is.na(cps.emp))
 
 #write final csv
-write.csv(cps.emp, file="FE_white.csv") #final.data when CSP appended
+write.csv(cps.emp, file="FE_white.csv") 
 
 
 

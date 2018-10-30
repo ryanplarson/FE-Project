@@ -505,6 +505,15 @@ cps.p6.marry.b <- cps.b %>% select(YEAR, STATENAME, marry, psix, WTFINL) %>%
 cps.emp <- left_join(cps.emp, cps.p6.marry.b, by = c("YEAR","STATENAME")) %>%
   mutate(p6.marriage.rate.b = 100*(p6.marry.raw.b/p6.pop.b))
 
+#p6 black education
+cps.p6.degree.b <- cps.b %>% select(YEAR, STATENAME, degree, psix, WTFINL) %>% 
+  group_by(YEAR, STATENAME, degree, psix) %>% summarize(overall=sum(WTFINL, na.rm=T)) %>% 
+  unite(age_degree, psix, degree) %>%
+  spread(age_degree, overall) %>% select(YEAR, STATENAME, 'Yes_Yes') %>% rename(p6.degree.raw.b = 'Yes_Yes') 
+
+cps.emp <- left_join(cps.emp, cps.p6.degree.b, by = c("YEAR","STATENAME")) %>%
+  mutate(p6.degree.rate.b = 100*(p6.degree.raw.b/p6.pop.b))
+
 
 
 

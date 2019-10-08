@@ -1,0 +1,56 @@
+% Copyright 2010 by Konstantin Golyaev.
+% This can be modified and distributed as desired, but please do not delete the first comment above.
+%
+% This is a part of the UMN (University of Minnesota) Beamer presentation theme.
+% Other parts are in files beamercolorthemeUMN.sty and beamerouterthemeUMN.sty
+% All three files are needed if you want the theme to work properly.
+%
+% This file, beamerthemeUMN.sty, defines the presentation theme. 
+% This is essentially the main file for the theme, that is invoked
+% if you give command \usetheme{UMN} in your Beamer tex-file.
+%
+% There are two ways to make things work. 
+%    1) Simple - put all three files in the same folder as you tex-file.
+%       You will have to haul them around every time though.
+%
+%    2) Harder - put these into appropriate sub-directories of the beamer
+%       installation directory. The current file should go into the themes
+%       directory, the colortheme file - into the color directory, and the
+%       outertheme file - into the outer directory. You will have to do it
+%       on each computer you use, though.
+%
+% Do not try to rename any of the files. The words beamerXXXtheme are apparently
+% ignored by Beamer, so do not try to say: \usetheme{beamerthemeUMN}, because
+% Beamer will search for file named beamerthemebeamerthemeUMN.sty for it.
+%
+% See Beamer user guide for details on themes. But there is virtually no
+% information on how to create a theme, I had to figure it out myself.
+
+\ProvidesPackage{beamerthemeUMN}
+  [2010/03/17 v1.0 beamer 'UMN' theme]
+  
+\mode<presentation>
+
+% use the other two files of the UMN theme
+\usecolortheme{UMN}
+\useoutertheme{UMN}
+
+% The setting below are fairly standard. You can override any of them.
+\usefonttheme{default}
+\useinnertheme{rounded}
+\useoutertheme{default}
+
+\setbeamerfont{author}{size=\large}
+\setbeamerfont{date}{size=\large}
+\setbeamerfont{example text}{series=\bfseries}
+\setbeamerfont{frametitle}{series=\bfseries,size=\large}
+\setbeamerfont{framesubtitle}{series=\mdseries,size=\large}
+\setbeamerfont{section}{series=\bfseries}
+\setbeamerfont{subsection}{series=\bfseries}
+\setbeamerfont{title}{series=\bfseries}
+
+% I suppress the navigation symbols that Beamer draws in bottom right corner,
+% you can comment out the line below to enable them.
+\setbeamertemplate{navigation symbols}{}
+
+\mode<all>

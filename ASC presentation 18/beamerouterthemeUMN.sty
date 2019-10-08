@@ -1,0 +1,59 @@
+% Copyright 2010 by Konstantin Golyaev.
+% This can be modified and distributed as desired, but please do not delete the first comment above.
+
+% This is a part of the UMN (University of Minnesota) Beamer presentation theme.
+% Other parts are in files beamercolorthemeUMN.sty and beamerthemeUMN.sty
+% All three files are needed if you want the theme to work properly.
+
+% This file, beamerouterthemeUMN.sty, defines the presentation outer theme. 
+% See Beamer user guide for details on outer themes. The code is borrowed from
+% the original outer theme "infolines", the main modification includes the resized
+% footer, with 50% in the center given for short presentation title instead of 33%.
+
+% See comments in beamerthemeUMN.sty on how the whole thing is supposed to work.
+% See comments below on how you can modify parts of this file.
+
+\ProvidesPackage{beamerouterthemeUMN}
+
+\mode<presentation>
+
+% Below the template for footer is defined.
+% Change numbers after the [wd= code to resize parts of the footer
+% I picked 25%, 50% and 25%, numbers better sign up to 1.
+
+\defbeamertemplate*{footline}{infolines theme}
+{
+  \leavevmode%
+  \hbox{%
+  \begin{beamercolorbox}[wd=.25\paperwidth,ht=2.25ex,dp=1ex,center]{author in head/foot}%
+    \usebeamerfont{author in head/foot}\insertshortauthor~~(\insertshortinstitute)
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=.5\paperwidth,ht=2.25ex,dp=1ex,center]{title in head/foot}%
+    \usebeamerfont{title in head/foot}\insertshorttitle
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=.25\paperwidth,ht=2.25ex,dp=1ex,right]{date in head/foot}%
+    \usebeamerfont{date in head/foot}\insertshortdate{}\hspace*{2em}
+    \insertframenumber{} / \inserttotalframenumber\hspace*{2ex} 
+  \end{beamercolorbox}}%
+  \vskip0pt%
+}
+
+% Below the template for header is defined.
+% Change numbers after the [wd= code to resize parts of the footer
+
+\defbeamertemplate*{headline}{infolines theme}
+{
+  \leavevmode%
+  \hbox{%
+  \begin{beamercolorbox}[wd=.5\paperwidth,ht=2.25ex,dp=1ex,right]{section in head/foot}%
+    \usebeamerfont{section in head/foot}\insertsectionhead\hspace*{2ex}
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=.5\paperwidth,ht=2.25ex,dp=1ex,left]{subsection in head/foot}%
+    \usebeamerfont{subsection in head/foot}\hspace*{2ex}\insertsubsectionhead
+  \end{beamercolorbox}}%
+  \vskip0pt%
+}
+
+\setbeamersize{text margin left=1em,text margin right=1em}
+
+\mode<all>

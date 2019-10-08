@@ -1,0 +1,64 @@
+% Copyright 2010 by Konstantin Golyaev.
+% This can be modified and distributed as desired, but please do not delete the first comment above.
+
+% This is a part of the UMN (University of Minnesota) Beamer presentation theme.
+% Other parts are in files beamerouterthemeUMN.sty and beamerthemeUMN.sty
+% All three files are needed if you want the theme to work properly.
+
+% This file, beamercolorthemeUMN.sty, defines the presentation colors. 
+% See Beamer user guide for details on colors, although the information there
+% is very limited, I had to figure out just about everything by trial and error. 
+
+% See comments in beamerthemeUMN.sty on how the whole thing is supposed to work.
+% See comments below on how you can modify parts of this file.
+
+\ProvidesPackage{beamercolorthemeUMN}
+  [2010/03/17 v1.0 beamer 'UMN' color theme]
+
+\mode<presentation>
+
+% I define UMN colors below, the first two are defined 
+% as the official university PR service says they should be
+\definecolor{UMNmaroon}{RGB}{122,0,25}
+\definecolor{UMNgold}{RGB}{255,204,51}
+\definecolor{UMNblack}{RGB}{0,0,0}
+\definecolor{UMNred}{RGB}{255,0,0}
+
+% Define colors for types of text
+\setbeamercolor{normal text}{fg=UMNblack}
+\setbeamercolor{alerted text}{fg=UMNred}
+\setbeamercolor{example text}{fg=UMNred}
+
+% define colors for control elements - bullets and list numbers 
+\setbeamercolor{structure}{fg=UMNmaroon,bg=UMNgold}
+
+% define colors for title page elements
+\setbeamercolor{author}{fg=UMNmaroon}
+\setbeamercolor{date}{fg=UMNmaroon}
+\setbeamercolor{institute}{fg=UMNmaroon}
+
+% define colors for frame titles and subtitles
+\setbeamercolor{frametitle}{fg=UMNmaroon,bg=UMNgold}
+\setbeamercolor{framesubtitle}{fg=UMNmaroon,bg=UMNgold}
+
+% define colors for infolines - section titles on top
+% and name/title/page numbers in the bottom
+\setbeamercolor{palette primary}{fg=UMNmaroon,bg=UMNgold}
+\setbeamercolor{palette secondary}{fg=UMNmaroon,bg=UMNgold!90!UMNblack}
+\setbeamercolor{palette tertiary}{fg=UMNgold,bg=UMNmaroon}
+\setbeamercolor{author in head/foot}{parent=palette tertiary}
+\setbeamercolor{title in head/foot}{parent=palette primary}
+\setbeamercolor{date in head/foot}{parent=palette tertiary}
+\setbeamercolor{section in head/foot}{parent=palette tertiary}
+\setbeamercolor{subsection in head/foot}{parent=palette secondary}
+
+% define colors for blocks like \begin{theorem} and such
+\setbeamercolor{block title}{fg=UMNgold,bg=UMNmaroon}
+\setbeamercolor{block body}{fg=UMNblack,bg=UMNgold}
+
+% I am not sure if these actually affect anything
+% but define them just in case
+\setbeamercolor{titlelike}{fg=UMNmaroon,bg=UMNgold}
+\setbeamercolor{separation line}{fg=UMNmaroon}
+
+\mode<all>

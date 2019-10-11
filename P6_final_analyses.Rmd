@@ -646,6 +646,7 @@ rownames(upper) <- c("Felony History Pct.","Not Employed Rate",
 corr2<-round(cor(fe.ov[fe.ov$YEAR >= 1988,c(15:18,22)], use="pairwise.complete.obs", method="pearson" ),2)
 corr2[upper.tri(corr2)] <-""
 upper2 <- as.matrix(corr2)
+
 rownames(upper2) <- c("Not Employed Rate","Unemployment Rate", "Idleness Rate", "Can't Find Work Rate","Felony History Pct.")
 ```
 

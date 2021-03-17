@@ -1,0 +1,8 @@
+\beamer@sectionintoc {1}{Introduction}{3}{0}{1}
+\beamer@sectionintoc {2}{Literature}{9}{0}{2}
+\beamer@sectionintoc {3}{Methods}{10}{0}{3}
+\beamer@subsectionintoc {3}{1}{Data}{10}{0}{3}
+\beamer@subsectionintoc {3}{2}{Measures}{12}{0}{3}
+\beamer@subsectionintoc {3}{3}{Analytical Strategy}{14}{0}{3}
+\beamer@sectionintoc {4}{Results}{16}{0}{4}
+\beamer@sectionintoc {5}{Summary}{18}{0}{5}

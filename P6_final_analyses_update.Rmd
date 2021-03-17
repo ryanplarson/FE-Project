@@ -1,0 +1,648 @@
+---
+title: "P6 Penultimate Analyses"
+author: "Ryan Larson"
+date: "`r format(Sys.time(), '%m/%d/%Y')`"
+header-includes:
+- \usepackage{pdflscape}
+- \usepackage{dcolumn}
+- \usepackage{booktabs}
+#- \usepackage{animate}
+- \newcommand{\blandscape}{\begin{landscape}}
+- \newcommand{\elandscape}{\end{landscape}}
+output: pdf_document
+fontsize: 11pt
+geometry: margin=0.5in
+editor_options: 
+  chunk_output_type: console
+---
+
+
+```{r library_data, include=FALSE, message=FALSE}
+
+library(sf)
+library(tidycensus)
+library(dplyr)
+library(ggplot2)
+library(stargazer)
+library(car)
+library(plm)
+library(lmtest)
+library(sandwich)
+library(ggmap)
+library(mapdata)
+library(RColorBrewer)
+library(gganimate)
+library(imputeTS)
+library(tidycensus)
+library(ggrepel)
+library(fixest)
+
+
+
+
+
+
+
+#loading in data/setting working directory
+#setwd("C:/Users/DELL/Documents/FE 2017") #set to google drive local folder
+fe <- read.csv(file="FE_final.csv", header=T)
+```
+
+```{r, include=F, warning=F}
+fe.ov <- fe %>% select(YEAR, STATENAME, STATEFIP, p6.pop, popshare.16.25, popshare.26.35, popshare.36.45,
+                       popshare.46.55, popshare.56.65, popshare.66.plus, t.unemp.rate,
+                       t_1.unemp.rate, t_2.unemp.rate, t_3.unemp.rate, p6.y1.notemployed.rate,
+                       p6.y2.unemployed.rate, p6.y3.idle.rate, p6.y4.cfw.rate,p6.disab.rate, ssi.rate,
+                       p6.marriage.rate, pctexfel, ssdi.rate, effective.wage, 
+                       TANF.mu, z_labor_unemployment_compensatio,p6.degree.rate, p6.poverty.rate, time.indicator) %>%
+                      mutate(ssi.rate=ssi.rate, norm.weight = p6.pop/(sum(p6.pop)/1550))
+
+exfel.v <- fe %>% select(STATENAME, YEAR, pctexfel) %>% filter(YEAR >= 1988)
+emp.v <- fe %>% select(STATENAME, YEAR, p6.y1.notemployed.rate) %>% filter(YEAR >= 1988)
+
+#disability figure for aaron
+fe.dis <- fe.ov %>% 
+  select(YEAR, p6.disab.rate) %>% 
+  filter(YEAR >= 1988) %>% 
+  group_by(YEAR) %>% 
+  summarise(disab = mean(p6.disab.rate, na.rm=T))
+
+fe.dis[23,2]/fe.dis[1,2]
+((fe.dis[23,2]-fe.dis[1,2])/fe.dis[1,2])*100
+
+fe.ex <- fe.ov %>% select(YEAR, pctexfel, norm.weight) %>% filter(YEAR >= 1988) %>% group_by(YEAR) %>% 
+  summarise(exfel = weighted.mean(pctexfel, w = norm.weight, na.rm=T))
+
+
+```
+
+
+
+# Descriptive Statistics
+
+
+```{r,echo=F, results='asis'}
+stargazer(fe.ov[fe.ov$YEAR >= 1988,c(22,15,5:10,27, 21, 11:14, 19:20, 24:26, 28)], type="latex", style="asr", title="Unweighted Descriptive Statistics",
+          summary=T, median=T, covariate.labels=c("Felony History Pct.","Not Employed Rate",
+                                                  "Population Share 16-25","Population Share 26-35",
+                                                  "Population Share 36-45","Population Share 46-55",
+                                                  "Population Share 56-65","Population Share 66+",
+                                                  "Bachelor's Degree Rate","Marriage Rate",
+                                                  "Ovr. Unemployment Rate t","Ovr. Unemployment Rate t-1",
+                                                  "Ovr. Unemployment Rate t-2","Ovr. Unemployment Rate t-3",
+                                                  "Self-Report Disability Rate","SSI Rate",
+                                                  "Effective Wage","Mean TANF Maximum",
+                                                  "Unemployment Compensation", "Poverty Rate"), header = F)
+```
+
+
+# Maps
+
+## Felon Density Maps
+
+```{r, include=F}
+  census_api_key("ecda17575f4d914b502c70f2bae7a5f3d253792d")
+
+#vars <- load_variables(year = 2010, dataset = "sf1")
+
+states <- get_decennial(geography = "state", variables = "P001001", #output = "wide",
+                        geometry = T, shift_geo = T) %>% mutate(id=tolower(NAME))
+
+  
+fd <- fe %>% 
+  filter(YEAR >= 1988) %>%
+  group_by(STATENAME) %>% 
+  summarize(density = mean(pctexfel)) %>% 
+  rename(id = STATENAME) %>% 
+  mutate( id = tolower(id))
+
+emp.v.agg <- emp.v %>%
+  group_by(STATENAME) %>% 
+  summarize(ner = mean(p6.y1.notemployed.rate)) %>% 
+  rename(id = STATENAME) %>% 
+  mutate( id = tolower(id))
+
+fd.t <- fe %>% 
+  group_by(YEAR, STATENAME) %>% 
+  summarize(density = mean(pctexfel)) %>% 
+  rename(id = STATENAME) %>% mutate(id = tolower(id))
+
+fd.1980 <- fd.t %>% filter(YEAR==1980)
+fd.2010 <- fd.t %>% filter(YEAR==2010)
+
+usa <- states %>% inner_join(fd, by = "id") %>% inner_join(emp.v.agg, by = "id")
+usa.1980 <- states %>% inner_join(fd.1980, by = "id")
+usa.2010 <- states %>% inner_join(fd.2010, by = "id")
+```
+
+```{r, echo=F}
+#average across years
+ggplot(usa) +
+  geom_sf(aes(geometry = geometry, fill=density)) + 
+  coord_sf(crs=2163)+ 
+  scale_fill_distiller(palette = "Spectral",
+                       breaks = c(seq(1,10,1)),
+                       limits = c(1,10),
+                      name = "Percent") +
+  ggtitle("Figure 1: Felony History Pct. in the United States: 1988-2010",
+          subtitle = "Shannon et al. 2017")+
+  theme(axis.text = element_blank(),
+  axis.line = element_blank(),
+  axis.ticks = element_blank(),
+  panel.border = element_blank(),
+  panel.grid = element_blank(),
+  axis.title = element_blank(),
+  panel.background = element_blank(),
+  panel.grid.major = element_line(colour="transparent"), 
+  plot.subtitle = element_text(face="italic"))
+```
+
+```{r, echo=F}
+#average across years
+ggplot(usa) +
+  geom_sf(aes(geometry = geometry, fill=ner)) + 
+  coord_sf(crs=2163)+ 
+  scale_fill_distiller(palette = "Spectral",
+                       breaks = c(seq(15,33,3)),
+                       limits = c(15,33),
+                      name = "Percent") +
+  ggtitle("Figure 3: NER in the United States: 1988-2010",
+          subtitle = "Current Population Survey")+
+  theme(axis.text = element_blank(),
+  axis.line = element_blank(),
+  axis.ticks = element_blank(),
+  panel.border = element_blank(),
+  panel.grid = element_blank(),
+  axis.title = element_blank(),
+  panel.background = element_blank(),
+  panel.grid.major = element_line(colour="transparent"), 
+  plot.subtitle = element_text(face="italic"))
+```
+
+\pagebreak
+
+```{r,echo=F, include=F}
+#1980
+ggplot(usa.1980) +
+  geom_sf(aes(geometry = geometry, fill=density)) +
+  coord_sf(crs=2163)+
+  scale_fill_distiller(palette = "Spectral",
+                       breaks = c(seq(0,13,2)),
+                       limits = c(0,13),
+                      name = "Percent") +
+  ggtitle("Felony History Pct. in the United States: 1980",
+          subtitle = "Shannon et al. 2017")+
+  theme(axis.text = element_blank(),
+  axis.line = element_blank(),
+  axis.ticks = element_blank(),
+  panel.border = element_blank(),
+  panel.grid = element_blank(),
+  axis.title = element_blank(),
+  panel.background = element_blank(),
+  panel.grid.major = element_line(colour="transparent"), 
+  plot.subtitle = element_text(face="italic"))
+```
+
+\pagebreak
+
+```{r, echo=F, include = F}
+#2010
+ggplot(usa.2010) +
+  geom_sf(aes(geometry = geometry, fill=density)) +
+  coord_sf(crs=2163)+
+  scale_fill_distiller(palette = "Spectral",
+                       breaks = c(seq(0,13,2)),
+                       limits = c(0,13),
+                      name = "Percent") +
+  ggtitle("Figure 1: Felony History Pct. in the United States, 2010",
+          subtitle = "Shannon et al. 2017")+
+  theme(axis.text = element_blank(),
+  axis.line = element_blank(),
+  axis.ticks = element_blank(),
+  panel.border = element_blank(),
+  panel.grid = element_blank(),
+  axis.title = element_blank(),
+  panel.background = element_blank(),
+  panel.grid.major = element_line(colour="transparent"), #Removes graticule lines
+  plot.subtitle = element_text(face="italic"))
+
+```
+
+
+```{r, echo=F, fig.show='animate', eval=F}
+usa.t <- states %>% inner_join(fd.t, by = "id") #fd.t being state-year dataframe
+
+map <- ggplot(usa.t) +
+  geom_sf(aes(geometry = geometry, fill=density)) + #frame = specifies animation
+    coord_sf(crs=2163)+
+  scale_fill_distiller(palette = "Spectral",
+                       breaks = c(seq(0,13,2)),
+                       limits = c(0,13),
+                      name = "Percent") +
+  ggtitle("Ex-Felon Density in the United States: {current_frame}",
+          subtitle = "Shannon et al. 2017")+
+  theme(axis.text = element_blank(),
+  axis.line = element_blank(),
+  axis.ticks = element_blank(),
+  panel.border = element_blank(),
+  panel.grid = element_blank(),
+  axis.title = element_blank(),
+  panel.background = element_blank(),
+  plot.subtitle = element_text(face="italic"),
+  panel.grid.major = element_line(colour="transparent"),
+  plot.title = element_text(face="bold"))+
+  transition_manual(YEAR)
+
+animate(map, fps = 1, device = 'png')
+```
+
+## Spaghetti Plots
+
+
+```{r,echo=F, results='asis'}
+ggplot(emp.v, aes(x=YEAR, y = p6.y1.notemployed.rate, color = STATENAME))+
+  geom_line()+
+  geom_label_repel(data = subset(emp.v, YEAR==2010 & STATENAME %in% c("Minnesota", "Georgia")),
+                   aes(label=STATENAME))+
+  theme_minimal()+
+  xlab("Year")+
+  ylab("Non Employment Rate")+
+  ggtitle("Figure 4: Non Employment Rate (18-54) by State")+
+  theme(legend.position = "none") 
+```
+
+```{r,echo=F, results='asis'}
+ggplot(exfel.v, aes(x=YEAR, y = pctexfel, color = STATENAME))+
+  geom_line()+
+  geom_label_repel(data = subset(exfel.v, YEAR==2010 & STATENAME %in% c("Minnesota", "Georgia")),
+                   aes(label=STATENAME))+
+  theme_minimal()+
+  xlab("Year")+
+  ylab("Felony History Percentage")+
+  ggtitle("Figure 2: Estimated Felony History Pct. by State", 
+          subtitle = "Shannon et. al. 2017")+
+  theme(legend.position = "none") 
+```
+
+# Overall Models
+
+```{r, include=FALSE}
+y1.fe <- feols(p6.y1.notemployed.rate ~ pctexfel | STATENAME+YEAR, 
+               data = fe.ov[fe.ov$YEAR >=1988,], 
+               se="twoway",
+               weights=fe.ov[fe.ov$YEAR >=1988,]$norm.weight)
+
+y1.fe.2 <-  feols(p6.y1.notemployed.rate ~ pctexfel+
+                popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                 p6.degree.rate+p6.marriage.rate| STATENAME+YEAR, 
+               data = fe.ov[fe.ov$YEAR >=1988,], 
+               se="twoway",
+               weights=fe.ov[fe.ov$YEAR >=1988,]$norm.weight)
+
+y1.fe.3 <-  feols(p6.y1.notemployed.rate ~ pctexfel+
+                popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                 p6.degree.rate+p6.marriage.rate+
+                  t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate| STATENAME+YEAR, 
+               data = fe.ov[fe.ov$YEAR >=1988,], 
+               se="twoway",
+               weights=fe.ov[fe.ov$YEAR >=1988,]$norm.weight)
+
+y1.fe.4 <-  feols(p6.y1.notemployed.rate ~ pctexfel+
+                popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                 p6.degree.rate+p6.marriage.rate+
+                  t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+
+                 p6.disab.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio | STATENAME+YEAR, 
+               data = fe.ov[fe.ov$YEAR >=1988,], 
+               se="twoway",
+               weights=fe.ov[fe.ov$YEAR >=1988,]$norm.weight)
+
+```
+
+
+```{r, results='asis', echo=F}
+etable(y1.fe, y1.fe.2, y1.fe.3, y1.fe.4, 
+       se = "twoway",
+       tex = TRUE,
+       title = "Panel Models of Not Employed Rate, 1988-2010",
+       dict = c(p6.y1.notemployed.rate="Not Employed Rate",
+                pctexfel="Felony History Pct.",
+                popshare.26.35="Pop. Share 26-35",
+                popshare.36.45="Pop. Share 36-45",
+                popshare.46.55="Pop. Share 46-55",
+                popshare.56.65="Pop. Share 56-65",
+                popshare.66.plus="Pop. Share 66+", 
+                p6.degree.rate="Degree Rate", 
+                p6.marriage.rate="Marriage Rate",
+                t.unemp.rate="Ovr. Unemp. Rate t",
+                t_1.unemp.rate="Ovr. Unemp. Rate t-1",
+                t_2.unemp.rate="Ovr. Unemp. Rate t-2",
+                t_3.unemp.rate="Ovr. Unemp. Rate t-3",
+                p6.disab.rate="Disab. Rate",
+                effective.wage="Effective Wage", 
+                TANF.mu="Mean TANF Maximum",  
+                z_labor_unemployment_compensatio="Unemployment Comp.",
+                STATENAME="State",
+                YEAR="Year"))
+
+```
+
+\pagebreak
+
+
+\pagebreak
+
+# Robustness Checks
+
+```{r, include=FALSE}
+y2.fe <-  feols(p6.y2.unemployed.rate ~ pctexfel+
+                popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                 p6.degree.rate+p6.marriage.rate+
+                  t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+
+                 p6.disab.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio | STATENAME+YEAR, 
+               data = fe.ov[fe.ov$YEAR >=1988,], 
+               se="twoway",
+               weights=fe.ov[fe.ov$YEAR >=1988,]$norm.weight)
+
+y3.fe <-  feols(p6.y3.idle.rate ~ pctexfel+
+                popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                 p6.degree.rate+p6.marriage.rate+
+                  t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+
+                 p6.disab.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio | STATENAME+YEAR, 
+               data = fe.ov[fe.ov$YEAR >=1988,], 
+               se="twoway",
+               weights=fe.ov[fe.ov$YEAR >=1988,]$norm.weight)
+```
+
+
+```{r, results='asis', echo=F, include=F}
+etable(y1.fe, y1.fe.2, y1.fe.3, y1.fe.4, 
+       se = "twoway",
+       tex = TRUE,
+       title = "Panel Models of Unemployment and Idleness Rates, 1988-2010",
+       dict = c(p6.y1.notemployed.rate="Not Employed Rate",
+                pctexfel="Felony History Pct.",
+                popshare.26.35="Pop. Share 26-35",
+                popshare.36.45="Pop. Share 36-45",
+                popshare.46.55="Pop. Share 46-55",
+                popshare.56.65="Pop. Share 56-65",
+                popshare.66.plus="Pop. Share 66+", 
+                p6.degree.rate="Degree Rate", 
+                p6.marriage.rate="Marriage Rate",
+                t.unemp.rate="Ovr. Unemp. Rate t",
+                t_1.unemp.rate="Ovr. Unemp. Rate t-1",
+                t_2.unemp.rate="Ovr. Unemp. Rate t-2",
+                t_3.unemp.rate="Ovr. Unemp. Rate t-3",
+                p6.disab.rate="Disab. Rate",
+                effective.wage="Effective Wage", 
+                TANF.mu="Mean TANF Maximum",  
+                z_labor_unemployment_compensatio="Unemployment Comp.",
+                STATENAME="State",
+                YEAR="Year"))
+```
+
+\pagebreak
+
+<!--- # Alternative Sample Models -->
+
+```{r, echo=F, include=F}
+#not employed - psix men
+fe.p6.m <- fe %>% select(YEAR, STATENAME, STATEFIP, p6.pop.m,popshare.16.25, popshare.26.35, popshare.36.45,
+                       popshare.46.55, popshare.56.65, popshare.66.plus, t.unemp.rate,
+                       t_1.unemp.rate, t_2.unemp.rate, t_3.unemp.rate, p6.y1.notemployed.rate.m,
+                       p6.y2.unemployed.rate.m, p6.y3.idle.rate.m, p6.y4.cfw.rate.m,p6.disab.rate.m, ssi.rate,
+                       p6.marriage.rate.m, pctexfel, ssdi.rate, effective.wage, 
+                       TANF.mu, z_labor_unemployment_compensatio, p6.degree.rate.m,time.indicator) %>%
+                      mutate(ssi.rate=ssi.rate, norm.weight = p6.pop.m*(1550/sum(p6.pop.m))) %>%               
+                  rename(marriage.rate=p6.marriage.rate.m, 
+                         p6.y1.notemployed.rate = p6.y1.notemployed.rate.m,
+                          p6.disab.rate = p6.disab.rate.m,
+                           p6.degree.rate = p6.degree.rate.m,
+                         p6.marriage.rate = p6.marriage.rate.m)
+
+p6.y1.male <-  feols(p6.y1.notemployed.rate ~ pctexfel+
+                popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                 p6.degree.rate+p6.marriage.rate+
+                  t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+
+                 p6.disab.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio | STATENAME+YEAR, 
+               data = fe.p6.m[fe.p6.m$YEAR >=1988,], 
+               se="twoway",
+               weights=fe.p6.m[fe.p6.m$YEAR >=1988,]$norm.weight)
+
+
+
+#not employed - psix women
+fe.p6.female <- fe %>% select(YEAR, STATENAME, STATEFIP, p6.pop.female, popshare.16.25, popshare.26.35, popshare.36.45,
+                       popshare.46.55, popshare.56.65, popshare.66.plus, t.unemp.rate,
+                       t_1.unemp.rate, t_2.unemp.rate, t_3.unemp.rate, p6.y1.notemployed.rate.female,
+                       p6.y2.unemployed.rate.female, p6.y3.idle.rate.female, p6.y4.cfw.rate.female, ssi.rate,
+                       p6.marriage.rate.female, p6.disab.rate.female, pctexfel, ssdi.rate, effective.wage, 
+                       TANF.mu, z_labor_unemployment_compensatio,p6.degree.rate.female,time.indicator) %>%
+                      mutate(ssi.rate=ssi.rate, norm.weight = p6.pop.female*(1550/sum(p6.pop.female))) %>% 
+                      rename(p6.marriage.rate= p6.marriage.rate.female, p6.disab.rate = p6.disab.rate.female,
+                             p6.y1.notemployed.rate = p6.y1.notemployed.rate.female,
+                             p6.degree.rate = p6.degree.rate.female)
+
+p6.y1.female <-  feols(p6.y1.notemployed.rate ~ pctexfel+
+                popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                 p6.degree.rate+p6.marriage.rate+
+                  t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+
+                 p6.disab.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio | STATENAME+YEAR, 
+               data = fe.p6.female[fe.p6.female$YEAR >=1988,], 
+               se="twoway",
+               weights=fe.p6.female[fe.p6.female$YEAR >=1988,]$norm.weight)
+
+#not employed - black psix
+fe.p6.black <- fe %>% select(YEAR, STATENAME, STATEFIP, p6.pop.b, popshare.16.25, popshare.26.35, popshare.36.45,
+                       popshare.46.55, popshare.56.65, popshare.66.plus, t.unemp.rate,
+                       t_1.unemp.rate, t_2.unemp.rate, t_3.unemp.rate, p6.y1.notemployed.rate.b,
+                       p6.y2.unemployed.rate.b, p6.y3.idle.rate.b, p6.y4.cfw.rate.b, ssi.rate,
+                       p6.marriage.rate.b, p6.disab.rate.b, pctexfel.b, ssdi.rate, effective.wage, 
+                       TANF.mu, z_labor_unemployment_compensatio,p6.degree.rate.b,time.indicator) %>%
+                      mutate(ssi.rate=ssi.rate, norm.weight = p6.pop.b*(1550/sum(p6.pop.b, na.rm=T))) %>% rename(p6.marriage.rate=p6.marriage.rate.b, p6.disab.rate = p6.disab.rate.b, p6.degree.rate = p6.degree.rate.b,
+                    pctexfel = pctexfel.b, p6.y1.notemployed.rate=p6.y1.notemployed.rate.b)
+
+#checking missings - ASEC NA's
+colSums(is.na(fe.p6.black[fe.p6.black$YEAR >= 1988,]))
+fe.p6.black[is.na(fe.p6.black$p6.y1.notemployed.rate.b) & fe.p6.black$YEAR >= 1988,c("YEAR","STATENAME")]
+fe.p6.black[is.na(fe.p6.black$p6.marriage.rate) & fe.p6.black$YEAR >= 1988,c("YEAR","STATENAME")]
+dim(fe.p6.black[is.na(fe.p6.black$p6.disab.rate) & fe.p6.black$YEAR >= 1988,c("YEAR","STATENAME")])
+
+#imputation - just disability for now
+fe.p6.black <- fe.p6.black %>% 
+  mutate(dis.imputed = ifelse(YEAR >= 1988, ifelse(is.na(p6.disab.rate), "Imputed","Not Imputed"), NA), 
+         p6.disab.rate = ifelse(YEAR >= 1988, na_interpolation(p6.disab.rate, option = "linear"), NA),
+         mar.imputed = ifelse(YEAR >= 1988, ifelse(is.na(p6.marriage.rate), "Imputed","Not Imputed"), NA), 
+         p6.marriage.rate = ifelse(YEAR >= 1988, na_interpolation(p6.marriage.rate, option = "linear"), NA),
+         dis.imputed = factor(dis.imputed, levels = c("Not Imputed", "Imputed")),
+         mar.imputed = factor(mar.imputed, levels = c("Not Imputed", "Imputed"))) 
+  
+
+p6.y1.black <-  feols(p6.y1.notemployed.rate ~ pctexfel+
+                popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                 p6.degree.rate+p6.marriage.rate+
+                  t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+
+                 p6.disab.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+
+                  dis.imputed+mar.imputed| STATENAME+YEAR, 
+               data = fe.p6.black[fe.p6.black$YEAR >=1988,], 
+               se="twoway",
+               weights=fe.p6.black[fe.p6.black$YEAR >=1988,]$norm.weight)
+
+#not employed - white psix
+fe.p6.white <- fe %>% select(YEAR, STATENAME, STATEFIP, p6.pop.w,popshare.16.25, popshare.26.35, popshare.36.45,
+                       popshare.46.55, popshare.56.65, popshare.66.plus, t.unemp.rate,
+                       t_1.unemp.rate, t_2.unemp.rate, t_3.unemp.rate, p6.y1.notemployed.rate.w,
+                       p6.y2.unemployed.rate.w, p6.y3.idle.rate.w, p6.y4.cfw.rate.w, ssi.rate,
+                       p6.marriage.rate.w, p6.disab.rate.w, pctexfel, ssdi.rate, effective.wage, 
+                       TANF.mu, z_labor_unemployment_compensatio,p6.degree.rate.w, time.indicator) %>%
+                      mutate(ssi.rate=ssi.rate, 
+                             norm.weight = p6.pop.w*(1550/sum(p6.pop.w)), p6.marriage.rate=p6.marriage.rate.w,
+                             p6.disab.rate = p6.disab.rate.w, p6.degree.rate = p6.degree.rate.w,
+                             p6.y1.notemployed.rate = p6.y1.notemployed.rate.w)
+
+p6.y1.white <-  feols(p6.y1.notemployed.rate ~ pctexfel+
+                popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                 p6.degree.rate+p6.marriage.rate+
+                  t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+
+                 p6.disab.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio | STATENAME+YEAR, 
+               data = fe.p6.white[fe.p6.white$YEAR >=1988,], 
+               se="twoway",
+               weights=fe.p6.white[fe.p6.white$YEAR >=1988,]$norm.weight)
+```
+
+```{r, results='asis', echo=F}
+etable(p6.y1.male, p6.y1.female, p6.y1.black, p6.y1.white,
+       se = "twoway",
+       tex = TRUE,
+       subtitles=c("Male", "Female", "Black", "White"),
+       title = "Alternative Sample Models",
+       dict = c(p6.y1.notemployed.rate="Not Employed Rate",
+                pctexfel="Felony History Pct.",
+                popshare.26.35="Pop. Share 26-35",
+                popshare.36.45="Pop. Share 36-45",
+                popshare.46.55="Pop. Share 46-55",
+                popshare.56.65="Pop. Share 56-65",
+                popshare.66.plus="Pop. Share 66+", 
+                p6.degree.rate="Degree Rate", 
+                p6.marriage.rate="Marriage Rate",
+                t.unemp.rate="Ovr. Unemp. Rate t",
+                t_1.unemp.rate="Ovr. Unemp. Rate t-1",
+                t_2.unemp.rate="Ovr. Unemp. Rate t-2",
+                t_3.unemp.rate="Ovr. Unemp. Rate t-3",
+                p6.disab.rate="Disab. Rate",
+                effective.wage="Effective Wage", 
+                TANF.mu="Mean TANF Maximum",  
+                z_labor_unemployment_compensatio="Unemployment Comp.",
+                STATENAME="State",
+                YEAR="Year",
+                dis.imputedImputed="Disab. Imputed", 
+                mar.imputedImputed="Marriage Imputed"))
+```
+
+\pagebreak
+
+# Alternative Specifications of Disabiility
+
+```{r, warning=F, include=F}
+
+y1.fe.d <-  feols(p6.y1.notemployed.rate ~ pctexfel+
+                popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                 p6.degree.rate+p6.marriage.rate+
+                  t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+
+                 p6.disab.rate+ssi.rate+
+                  effective.wage+TANF.mu+z_labor_unemployment_compensatio | STATENAME+YEAR, 
+               data = fe.ov[fe.ov$YEAR >=1988,], 
+               se="twoway",
+               weights=fe.ov[fe.ov$YEAR >=1988,]$norm.weight)
+
+
+fe.ov.missfill <- fe.ov %>% mutate(p6.disab.rate = ifelse(is.na(p6.disab.rate), 0, p6.disab.rate))
+
+y1.fe.d.2 <-  feols(p6.y1.notemployed.rate ~ pctexfel+
+                popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                 p6.degree.rate+p6.marriage.rate+
+                  t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+
+                 p6.disab.rate+ssi.rate+
+                  effective.wage+TANF.mu+z_labor_unemployment_compensatio | STATENAME+YEAR, 
+               data = fe.ov.missfill, 
+               se="twoway",
+               weights=fe.ov.missfill$norm.weight)
+
+y1.fe.d.3 <-  feols(p6.y1.notemployed.rate ~ pctexfel+
+                popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                 p6.degree.rate+p6.marriage.rate+
+                  t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+
+                 p6.disab.rate+
+                  effective.wage+TANF.mu+z_labor_unemployment_compensatio | STATENAME+YEAR, 
+               data = fe.ov.missfill, 
+               se="twoway",
+               weights=fe.ov.missfill$norm.weight)
+```
+
+
+```{r, results='asis', echo=F}
+etable(y1.fe.d, y1.fe.d.2, y1.fe.d.3, 
+       se = "twoway",
+       tex = TRUE,
+       subtitles=c("w/SSI", "Imputed", "Imputed w/o SSI"),
+       title = "Alternative Specifications of Disability",
+       dict = c(p6.y1.notemployed.rate="Not Employed Rate",
+                pctexfel="Felony History Pct.",
+                popshare.26.35="Pop. Share 26-35",
+                popshare.36.45="Pop. Share 36-45",
+                popshare.46.55="Pop. Share 46-55",
+                popshare.56.65="Pop. Share 56-65",
+                popshare.66.plus="Pop. Share 66+", 
+                p6.degree.rate="Degree Rate", 
+                p6.marriage.rate="Marriage Rate",
+                t.unemp.rate="Ovr. Unemp. Rate t",
+                t_1.unemp.rate="Ovr. Unemp. Rate t-1",
+                t_2.unemp.rate="Ovr. Unemp. Rate t-2",
+                t_3.unemp.rate="Ovr. Unemp. Rate t-3",
+                p6.disab.rate="Disab. Rate",
+                effective.wage="Effective Wage", 
+                TANF.mu="Mean TANF Maximum",  
+                z_labor_unemployment_compensatio="Unemployment Comp.",
+                STATENAME="State",
+                YEAR="Year", 
+                ssi.rate="SSI Rate"))
+```
+
+\pagebreak
+
+
+
+<!--- # Appendix -->
+
+
+
+```{r, include=F}
+corr<-round(cor(fe.ov[fe.ov$YEAR >= 1988,c(22,15,5:10,27, 21, 11:14, 19:20, 24:26)], use="pairwise.complete.obs", method="pearson" ),2)
+corr[upper.tri(corr)] <-""
+upper <- as.matrix(corr)
+rownames(upper) <- c("Felony History Pct.","Not Employed Rate",
+                                                  "Population Share 16-25","Population Share 26-35",
+                                                  "Population Share 36-45","Population Share 46-55",
+                                                  "Population Share 56-65","Population Share 66+",
+                                                  "Bachelor's Degree Rate","Marriage Rate",
+                                                  "Ovr. Unemployment Rate t","Ovr. Unemployment Rate t-1",
+                                                  "Ovr. Unemployment Rate t-2","Ovr. Unemployment Rate t-3",
+                                                  "Self-Report Disability Rate","SSI Rate",
+                                                  "Effective Wage","Mean TANF Maximum",
+                                                  "Unemployment Compensation")
+
+corr2<-round(cor(fe.ov[fe.ov$YEAR >= 1988,c(15:18,22)], use="pairwise.complete.obs", method="pearson" ),2)
+corr2[upper.tri(corr2)] <-""
+upper2 <- as.matrix(corr2)
+
+rownames(upper2) <- c("Not Employed Rate","Unemployment Rate", "Idleness Rate", "Can't Find Work Rate","Felony History Pct.")
+```
+
+
+```{r, results='asis', echo=F, include=F}
+stargazer(upper, header=F, title="Pairwise Correlations", font.size="small", column.sep.width = "0.15pt",
+          single.row=TRUE,covariate.labels=c(as.character(paste(c("Variable",1:20)))))
+
+#stargazer(upper2, header=F, title="Pairwise Correlations", font.size="small", column.sep.width = "0.15pt",
+ #         single.row=TRUE,covariate.labels=c(as.character(paste(c("Variable",1:20)))))
+```
+

@@ -20,9 +20,12 @@ class(cps)
 str(cps)
 
 cps.w <- cps %>% select(YEAR, MONTH, CPSID, STATEFIP, WTFINL, AGE, SEX, RACE, MARST, 
-                      EMPSTAT, WNLOOK, EDUC) %>% filter(AGE>=16 & RACE==100) 
-#write.csv(cps.w, file="cps_white.csv")
+                      EMPSTAT, WNLOOK, EDUC) 
 rm(cps)
+
+
+cps.w <- cps.w %>% filter(AGE>=16 & RACE==100) 
+#write.csv(cps.w, file="cps_white.csv")
 
 #adding in state names
 states <- read.csv(file="fips.csv", header=T, stringsAsFactors = F)
@@ -522,7 +525,7 @@ cps.emp <- left_join(cps.emp, cps.p6.degree.w, by = c("YEAR","STATENAME")) %>%
 #####################################################################################################
 #making ASEC supplement data
 asec <- read.csv(file = "cps_asec.csv", header=T) %>% select(YEAR, CPSID, STATEFIP, ASECWT, INCSSI, INCDISAB, DISABWRK,
-                                                             AGE, SEX, RACE, EMPSTAT, EDUC) %>% filter(AGE>=16 & RACE==100) 
+                                                             AGE, SEX, RACE, EMPSTAT, EDUC, OFFPOV) %>% filter(AGE>=16 & RACE==100) 
 
 ###########
 #recodes
@@ -553,6 +556,9 @@ asec$degree <- ifelse(asec$EDUC>=111, "Yes", "No")
 
 #disable - initital recode
 asec$disabin <- ifelse(asec$DISABWRK==2, "Yes", "No") #1988 onwards
+
+#poverty *only P6
+asec$poverty <- ifelse(asec$OFFPOV==1, "Yes", "No")
 
 #adding in state names
 states <- read.csv(file="fips.csv", header=T, stringsAsFactors = F)
@@ -624,6 +630,18 @@ asec.p6.dis.w <- asec %>% select(YEAR, STATENAME, disabin, psix, ASECWT) %>%
 #disability rate - prime age males without BA
 cps.emp <- left_join(cps.emp, asec.p6.dis.w, by = c("YEAR","STATENAME")) %>%
   mutate(p6.disab.rate.w = 100*(p6.disab.raw.w/p6.pop.w))
+
+#poverty *(only for psix)
+asec.p6.pov.w <- asec %>% select(YEAR, STATENAME, poverty, psix, ASECWT) %>% 
+  group_by(YEAR, STATENAME, poverty, psix) %>% summarize(overall=sum(ASECWT, na.rm=T)) %>% 
+  unite(age_dis, psix, poverty) %>%
+  spread(age_dis, overall) %>% select(YEAR, STATENAME, 'Yes_Yes') %>% rename(p6.poverty.raw.w = 'Yes_Yes')
+
+#poverty rate - p6 overall
+cps.emp <- left_join(cps.emp, asec.p6.pov.w, by = c("YEAR","STATENAME")) %>%
+  mutate(p6.poverty.rate.w = 100*(p6.poverty.raw.w/p6.pop.w))
+
+
 
 
 

@@ -15,7 +15,9 @@ class(cps)
 str(cps)
 
 cps <- cps %>% select(YEAR, MONTH, CPSID, STATEFIP, WTFINL, AGE, SEX, RACE, MARST, 
-                      EMPSTAT, WNLOOK, EDUC) %>% filter(AGE>=16) 
+                      EMPSTAT, WNLOOK, EDUC)
+
+cps <- cps %>% filter(AGE>=16) 
 
 
 
@@ -1429,7 +1431,7 @@ rm(csp.subset)
 
 #making ASEC supplement data
 asec <- read.csv(file = "cps_asec.csv", header=T) %>% select(YEAR, CPSID, STATEFIP, ASECWT, INCSSI, INCDISAB, DISABWRK,
-                                                             AGE, SEX, RACE, EMPSTAT, EDUC)
+                                                             AGE, SEX, RACE, EMPSTAT, EDUC, OFFPOV)
 
 ###########
 #recodes
@@ -1466,6 +1468,9 @@ asec$degree <- ifelse(asec$EDUC>=111, "Yes", "No")
 
 #disable - initital recode
 asec$disabin <- ifelse(asec$DISABWRK==2, "Yes", "No") #1988 onwards
+
+#poverty *only P6
+asec$poverty <- ifelse(asec$OFFPOV==1, "Yes", "No")
 
 #adding in state names
 states <- read.csv(file="fips.csv", header=T, stringsAsFactors = F)
@@ -1556,7 +1561,7 @@ asec.p5.dis <- asec %>% select(YEAR, STATENAME, disabin, ya, ASECWT) %>%
 cps.emp <- left_join(cps.emp, asec.p5.dis, by = c("YEAR","STATENAME")) %>%
   mutate(p5.disab.rate = 100*(p5.disab.raw/p5.pop))
 
-#p6 matching asec covariates
+#p6 matching asec covariates *poverty added here for testing(not included with other populations)
 
 #diability
 asec.p6.dis <- asec %>% select(YEAR, STATENAME, disabin, psix, ASECWT) %>% 
@@ -1590,6 +1595,40 @@ asec.p6.dis.f <- asec %>% select(YEAR, STATENAME, disabin, psix, gender, ASECWT)
 #disability rate - p6 females 
 cps.emp <- left_join(cps.emp, asec.p6.dis.f, by = c("YEAR","STATENAME")) %>%
   mutate(p6.disab.rate.female = 100*(p6.disab.raw.female/p6.pop.female))
+
+
+#poverty *(only for psix)
+asec.p6.pov <- asec %>% select(YEAR, STATENAME, poverty, psix, ASECWT) %>% 
+  group_by(YEAR, STATENAME, poverty, psix) %>% summarize(overall=sum(ASECWT, na.rm=T)) %>% 
+  unite(age_dis, psix, poverty) %>%
+  spread(age_dis, overall) %>% select(YEAR, STATENAME, 'Yes_Yes') %>% rename(p6.poverty.raw = 'Yes_Yes')
+
+#poverty rate - p6 overall
+cps.emp <- left_join(cps.emp, asec.p6.pov, by = c("YEAR","STATENAME")) %>%
+  mutate(p6.poverty.rate = 100*(p6.poverty.raw/p6.pop))
+
+#p6 male and female poverty
+
+#poverty
+asec.p6.pov.m <- asec %>% select(YEAR, STATENAME, poverty, psix, gender, ASECWT) %>% 
+  group_by(YEAR, STATENAME, poverty, psix, gender) %>% summarize(overall=sum(ASECWT, na.rm=T)) %>% 
+  unite(age_gen, psix, gender) %>% unite(age_gen_dis, age_gen, poverty) %>%
+  spread(age_gen_dis, overall) %>% select(YEAR, STATENAME, Yes_Male_Yes) %>% rename(p6.poverty.raw.m = Yes_Male_Yes)
+
+#poverty rate - p6 males 
+cps.emp <- left_join(cps.emp, asec.p6.pov.m, by = c("YEAR","STATENAME")) %>%
+  mutate(p6.poverty.rate.m = 100*(p6.poverty.raw.m/p6.pop.m))
+
+#p6.female.poverty
+asec.p6.pov.f <- asec %>% select(YEAR, STATENAME, poverty, psix, gender, ASECWT) %>% 
+  group_by(YEAR, STATENAME, poverty, psix, gender) %>% summarize(overall=sum(ASECWT, na.rm=T)) %>% 
+  unite(age_gen, psix, gender) %>% unite(age_gen_dis, age_gen, poverty) %>%
+  spread(age_gen_dis, overall) %>% select(YEAR, STATENAME, Yes_Female_Yes) %>% rename(p6.poverty.raw.female = Yes_Female_Yes)
+
+#poverty rate - p6 females 
+cps.emp <- left_join(cps.emp, asec.p6.pov.f, by = c("YEAR","STATENAME")) %>%
+  mutate(p6.poverty.rate.female = 100*(p6.poverty.raw.female/p6.pop.female))
+
 
 
 #p7 matching asec covariates

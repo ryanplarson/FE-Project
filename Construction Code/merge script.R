@@ -1,6 +1,7 @@
 #########################################
 ### CPS JOIN
 ########################################
+library (dplyr)
 
 overall <- read.csv(file="FE_overall.csv")
 white <- read.csv(file="FE_white.csv")

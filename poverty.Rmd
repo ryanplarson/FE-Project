@@ -1,0 +1,120 @@
+ ---
+title: "Exfel and Poverty"
+author: "Ryan Larson"
+date: "12/18/2020"
+output: pdf_document
+---
+
+```{r}
+
+library(dplyr)
+library(plm)
+library(lmtest)
+
+fe <- read.csv(file="FE_final.csv", header=T)
+
+fe.ov <- fe %>% select(YEAR, STATENAME, STATEFIP, p6.pop, 
+                       popshare.16.25, popshare.26.35, popshare.36.45,
+                       popshare.46.55, popshare.56.65, popshare.66.plus, t.unemp.rate,
+                       t_1.unemp.rate, t_2.unemp.rate, t_3.unemp.rate, p6.y1.notemployed.rate,
+                       p6.y2.unemployed.rate, p6.y3.idle.rate,
+                       p6.y4.cfw.rate,p6.disab.rate, ssi.rate,
+                       p6.marriage.rate, pctexfel, ssdi.rate, effective.wage, 
+                       TANF.mu, z_labor_unemployment_compensatio,
+                       p6.degree.rate, p6.poverty.rate, time.indicator) %>%
+                      mutate(ssi.rate=ssi.rate, norm.weight = p6.pop/(sum(p6.pop)/1550))
+```
+
+# Poverty Test
+
+```{r}
+#testing exfel on poverty
+fe.ov <- fe.ov %>%
+  group_by(STATENAME) %>%
+  mutate(pctexfel_t1 = dplyr::lag(pctexfel,1),
+         pctexfel_t2 = dplyr::lag(pctexfel,2),
+         pctexfel_t3 = dplyr::lag(pctexfel,3),
+         p6.y1.notemployed.rate_t1 = dplyr::lag(p6.y1.notemployed.rate,1))
+
+
+#FE bivariate models of poverty
+mod.pov.t0 <- lm(p6.poverty.rate~pctexfel+
+              as.factor(STATENAME)+as.factor(YEAR),
+                  data = fe.ov[fe.ov$YEAR >= 1988,])
+summary(mod.pov.t0)
+
+mod.pov.t1 <- lm(p6.poverty.rate~pctexfel_t1+
+              as.factor(STATENAME)+as.factor(YEAR),
+                  data = fe.ov[fe.ov$YEAR >= 1988,])
+summary(mod.pov.t1) #positive coefficient
+
+mod.pov.t2 <- lm(p6.poverty.rate~pctexfel_t2+
+              as.factor(STATENAME)+as.factor(YEAR),
+                  data = fe.ov[fe.ov$YEAR >= 1988,])
+summary(mod.pov.t2)
+
+mod.pov.t3 <- lm(p6.poverty.rate~pctexfel_t3+
+              as.factor(STATENAME)+as.factor(YEAR),
+                  data = fe.ov[fe.ov$YEAR >= 1988,])
+summary(mod.pov.t3)
+
+#fe poverty 
+pov.exfel <- plm(p6.poverty.rate~pctexfel_t2+
+                   popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                 p6.degree.rate+p6.marriage.rate+t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+
+                   t_3.unemp.rate+
+                 p6.disab.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio,
+                  data = fe.ov[fe.ov$YEAR >= 1988,], index = c("STATENAME","YEAR"), model="within",effect="twoway")
+pov.exfel.robust <- coeftest(pov.exfel, vcov=vcovDC(pov.exfel))
+
+pov.exfel.robust #no effect
+
+pov.employ <- plm(p6.y1.notemployed.rate_t1~pctexfel_t2+
+                   popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                 p6.degree.rate+p6.marriage.rate+t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+
+                 p6.disab.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio,
+                  data = fe.ov[fe.ov$YEAR >= 1988,], index = c("STATENAME","YEAR"), model="within",effect="twoway")
+pov.employ.robust <- coeftest(pov.employ, vcov=vcovDC(pov.employ))
+pov.employ.robust
+
+pov.exfel.robust #effect on employment
+
+pov.exfel.employ <- plm(p6.poverty.rate~p6.y1.notemployed.rate_t1+pctexfel_t2+
+                   popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                 p6.degree.rate+p6.marriage.rate+t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+
+                 p6.disab.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio,
+                  data = fe.ov[fe.ov$YEAR >= 1988,], index = c("STATENAME","YEAR"), model="within",effect="twoway")
+pov.exfel.employ.robust <- coeftest(pov.exfel.employ, vcov=vcovDC(pov.exfel.employ))
+pov.exfel.employ.robust 
+
+
+#mediation
+library(mediation)
+
+mod.m <- lm(p6.y1.notemployed.rate~pctexfel+
+              popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                 p6.degree.rate+p6.marriage.rate+t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+
+                 p6.disab.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+
+                 as.factor(STATENAME)+as.factor(YEAR),
+                  data = fe.ov[fe.ov$YEAR >= 1988,])
+
+mod.y <- lm(p6.poverty.rate~pctexfel+p6.y1.notemployed.rate+
+              popshare.26.35+popshare.36.45+popshare.46.55+popshare.56.65+popshare.66.plus+
+                 p6.degree.rate+p6.marriage.rate+t.unemp.rate+t_1.unemp.rate+t_2.unemp.rate+t_3.unemp.rate+
+                 p6.disab.rate+effective.wage+TANF.mu+z_labor_unemployment_compensatio+
+              as.factor(STATENAME)+as.factor(YEAR),
+                  data = fe.ov[fe.ov$YEAR >= 1988,])
+
+mediate <- mediate(mod.m, mod.y, treat="pctexfel", mediator="p6.y1.notemployed.rate")
+summary(mediate)
+
+#bivariate ols
+mod.m <- lm(p6.y1.notemployed.rate~pctexfel,
+                  data = fe.ov[fe.ov$YEAR >= 1988,])
+
+mod.y <- lm(p6.poverty.rate~pctexfel+p6.y1.notemployed.rate,
+                  data = fe.ov[fe.ov$YEAR >= 1988,])
+
+mediate <- mediate(mod.m, mod.y, treat="pctexfel", mediator="p6.y1.notemployed.rate")
+summary(mediate)
+```
